@@ -8,7 +8,7 @@ export function AiSetup({ ai, apply }: { ai: AiController; apply: (labels: strin
       onChange={e => ai.setPrompt(e.target.value)} placeholder="For example: organize my creative work into a few useful categories" />
     <p>Generate sends only the prompt above to Google Vertex AI. No filenames, membership lists or file contents are included.</p>
     <label className="checkbox"><input type="checkbox" checked={ai.background} onChange={e => ai.setBackground(e.target.checked)} />
-      Also draft next-level folders while I play: send this approved prompt + each approved category label (up to 5 requests), without membership names.</label>
+      Prepare future levels automatically: reuse this prompt and category labels, up to 5 requests per level. No filenames or file contents are sent. No repeated approval screens.</label>
     {ai.background && <small>Background drafting uses the last successfully generated prompt: {ai.approvedPrompt || 'none yet; Generate first.'}</small>}
     <button className="primary" disabled={!ai.status.enabled || ai.working || !ai.prompt.trim()}
       onClick={() => void ai.generate(apply)}>{ai.working ? 'Asking Gemini…' : 'Generate with Gemini · send prompt'}</button>

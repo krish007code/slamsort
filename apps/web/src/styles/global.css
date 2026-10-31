@@ -206,3 +206,12 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 @keyframes loading-feed { to { transform: translateX(8px); opacity: .45; } }
 @media(prefers-reduced-motion:reduce) { .loading-machine span { animation: none; } }
 @media(max-width:650px) { .file-loading,.empty-folder { padding: 24px; margin: 20px auto; } }
+
+.level-tree { border-bottom: 1px solid #674e6c; padding-bottom: 15px; margin-bottom: 18px; }
+.level-tree > strong { display: block; font-size: 12px; overflow-wrap: anywhere; color: #f2cf8d; }
+.level-tree > ul { max-height: 230px; overflow: auto; padding: 0 8px 0 15px; margin: 12px 0 0; }
+.level-tree li { font-size: 12px; margin: 8px 0; color: #eee1cf; }
+.level-tree li small { display: block; font-size: 10px; color: #97c5ba; }
+.level-tree li ul { padding-left: 14px; border-left: 1px solid #655369; list-style: none; }
+.level-tree li li { font-size: 10px; color: #c5b2c9; margin: 5px 0; }
+.level-tree .current-level > span { color: #f6d18b; font-weight: 700; }
