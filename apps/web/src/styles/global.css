@@ -87,7 +87,7 @@ h2 { font-size: 20px; letter-spacing: -.5px; margin: 12px 0 16px; }
 .status small { color: #a4cbb6; }
 .setup-card { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 28px; max-width: 1100px; margin: 30px auto; padding: 30px; border-color: #8ba793; }
 :where(.setup-card,.result-card,.local-panel,.recovery,.hint-panel) p:not(.eyebrow) { font-size: 12px; line-height: 1.8; color: #c2afc5; }
-.bin-inputs { display: flex; flex-wrap: wrap; gap: 10px; align-content: start; }
+.bin-inputs { min-width:0; display: flex; flex-wrap: wrap; gap: 10px; align-content: start; }
 .bin-inputs>label { flex: 1; min-width: 130px; }
 .bin-inputs .buttons { width: 100%; margin-top: 8px; }
 .bin-inputs .buttons label { max-width: 80px; }
@@ -208,10 +208,34 @@ footer { display: flex; justify-content: space-between; gap: 20px; border-top: 1
 @media(max-width:650px) { .file-loading,.empty-folder { padding: 24px; margin: 20px auto; } }
 
 .level-tree { border-bottom: 1px solid #674e6c; padding-bottom: 15px; margin-bottom: 18px; }
-.level-tree > strong { display: block; font-size: 12px; overflow-wrap: anywhere; color: #f2cf8d; }
-.level-tree > ul { max-height: 230px; overflow: auto; padding: 0 8px 0 15px; margin: 12px 0 0; }
-.level-tree li { font-size: 12px; margin: 8px 0; color: #eee1cf; }
-.level-tree li small { display: block; font-size: 10px; color: #97c5ba; }
-.level-tree li ul { padding-left: 14px; border-left: 1px solid #655369; list-style: none; }
-.level-tree li li { font-size: 10px; color: #c5b2c9; margin: 5px 0; }
-.level-tree .current-level > span { color: #f6d18b; font-weight: 700; }
+
+/* Connected folder nodes share one renderer in setup and on the court. */
+.flow-chart { --flow-line:#49675f; --flow-glow:#72dec0; }
+.flow-chart .flow-root { border:1px solid #8dc8b4; border-radius:10px; padding:13px 15px; color:#e5f7e9; background:linear-gradient(125deg,#23443d,#272433); box-shadow:0 0 20px #66e6b315; font-size:12px; overflow-wrap:anywhere; }
+.flow-chart .flow-scroll { max-width:100%; overflow:auto; max-height:340px; padding:0 4px 10px; scrollbar-color:#54786e #241d2d; }
+.flow-chart ul { list-style:none; margin:0; padding:0 0 0 16px; max-height:none; overflow:visible; border-left:1px solid var(--flow-line); }
+.flow-chart li { position:relative; padding:14px 0 0; margin:0; }
+.flow-chart li::before { content:''; position:absolute; top:32px; left:-16px; width:16px; border-top:1px solid var(--flow-line); }
+.flow-chart li ul { margin-left:14px; }
+.flow-node { padding:10px 12px; background:linear-gradient(135deg,#302b40,#241f2e); border:1px solid #626173; border-radius:9px; box-shadow:0 5px 14px #0003; min-width:125px; }
+.flow-node.is-ready { border-color:#70bda4; box-shadow:0 0 12px #65e6ac18,inset 0 0 14px #65e6ac06; }
+.flow-node.is-current { border-color:#f4ca78; box-shadow:0 0 17px #f4ca7830; }
+.flow-node strong { display:block; font-size:12px; margin:6px 0; overflow-wrap:anywhere; color:#f4e7cf; }
+.flow-chart .flow-depth { font-size:8px; letter-spacing:1px; color:#baa6cc; }
+.flow-chart .flow-state { display:flex; align-items:center; gap:6px; font-size:9px; color:#9ecdbb; margin-top:7px; }
+.flow-state i { width:5px; height:5px; flex-shrink:0; border-radius:50%; background:#80d8b8; box-shadow:0 0 7px #80d8b8; }
+.flow-node.is-planning { border-color:#dfb965; animation:node-pulse 1.6s ease-in-out infinite; }
+.flow-pending { border:1px dashed #655774; border-radius:8px; padding:13px 10px; color:#a49bad; font-size:10px; text-align:center; }
+.flow-pending span { display:block; font-size:21px; color:#ab9abd; }
+.flow-pending small { display:block; margin-top:5px; font-size:9px; }
+.flow-editor { border:0; margin:0; padding:0; width:100%; }
+.flow-editor .flow-root { text-align:center; }
+.flow-editor .flow-scroll { max-height:450px; }
+.flow-editor .flow-scroll > ul { position:relative; display:flex; gap:18px; width:max-content; min-width:100%; border:0; padding:22px 4px 4px; }
+.flow-editor .flow-scroll > ul > li { width:145px; padding-top:18px; border-top:1px solid var(--flow-line); }
+.flow-editor .flow-scroll > ul > li::before { top:0; left:50%; height:18px; width:0; border:0; border-left:1px solid var(--flow-line); }
+.flow-editor .flow-node input { width:100%; min-width:0; padding:7px 2px; border:0; border-bottom:1px solid #87bfa370; background:transparent; color:#fff1d2; font-size:13px; }
+@keyframes node-pulse { 50% { box-shadow:0 0 20px #dfb96535; } }
+@media(prefers-reduced-motion:reduce) { .flow-node.is-planning { animation:none; } }
+
+.flow-editor .flow-scroll > ul::before { content:""; position:absolute; top:0; left:50%; height:22px; border-left:1px solid var(--flow-line); }

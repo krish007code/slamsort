@@ -11,6 +11,7 @@ import { unlockSound } from '../game/sound';
 import { useFileBuffer } from '../files/useFileBuffer';
 import { nextBranches } from '../files/levels';
 import type { LevelJob } from '../files/levels';
+import { fileContext } from '../files/aiContext';
 import { Preview } from '../files/Preview';
 import { FileEngine, inspectEntry, scan, validName } from '../files/engine';
 import type { Entry, Journal, LocalDirectory, LocalFile } from '../files/engine';
@@ -95,7 +96,8 @@ export function App() {
     try {
       if (mode === 'local') {
         if (!dir || !engine.current) throw new Error('Local file engine unavailable.');
-        await engine.current.move(dir, current.name, dir, category);
+        const moved = await engine.current.move(dir, current.name, dir, category);
+        if (basket !== 'duplicates') ai.recordFile([...levelPath, category], { fileId: moved.id, approvedName: moved.targetName, size: moved.fingerprint.size, mimeType: buffer.first?.file.type ?? '' });
         await refreshJournal();
       }
       lastSuccess.current = current;
@@ -181,14 +183,14 @@ export function App() {
         levelQueue.current.push(...await nextBranches(dir, bins, path, levelPath, originalCount.current, scan));
         const next = levelQueue.current.shift();
         if (!next) { setNotice('All playable levels complete. Single-file folders and unchanged groups are kept as they are.'); return; }
-        const plan = await ai.prepareLevel(next.levelPath, next.levelPath.at(-1)!);
+        const plan = await ai.prepareLevel(next.levelPath, next.levelPath.at(-1)!, undefined, true);
         originalCount.current = next.files.length; lastSuccess.current = undefined;
         setDir(next.dir); setPath(next.path); setLevelPath(next.levelPath); setDirectories(next.directories);
         setItems(next.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]);
         setBins(plan.labels); setDraft(plan.labels); ai.freeze(plan.labels, next.levelPath);
         setRound(n => n + 1); setLeft(duration); setDestination(0); setScore(0);
         setPrepared(false); setInspect(false); setManual(false); setResult(false); setLastMiss(false);
-        setNotice(`Level ${next.levelPath.length + 1}: ${next.levelPath.join(' / ')}. Destinations ready — keep playing.${plan.fallback ? ' Using local fallback bins.' : ''}`);
+        setNotice(`Level ${next.levelPath.length + 1}: ${next.levelPath.join(' / ')}. Destinations ready — keep playing.${plan.fallback ? ' Using local fallback bins.' : plan.stale ? ' Refresh unavailable; using the earlier Gemini draft.' : ''}`);
       } catch { setNotice('The next folder could not be opened. Completed moves are safe; reopen the folder to renew access.'); }
       finally { io.current = false; setBusy(false); setAdvancing(false); }
     })();
@@ -197,7 +199,7 @@ export function App() {
     if (!undoable || !engine.current || io.current || inFlight.current) return;
     io.current = true; setBusy(true);
     try {
-      const restored = await engine.current.undo(undoable); await refreshJournal();
+      const restored = await engine.current.undo(undoable); ai.removeFile(undoable.id); await refreshJournal();
       if (dir && await dir.isSameEntry(restored.target!)) { const found = await scan(dir); const restoredItems = found.files.map(handle => ({ name: handle.name, handle }));
         if (retry) restoredItems.sort((a, b) => Number(b.name === restored.targetName) - Number(a.name === restored.targetName));
         setItems(restoredItems); setSkipped([]); }
@@ -258,13 +260,10 @@ export function App() {
         <p className="eyebrow">YOUR FOLDERS, YOUR CALL</p>
         <h2>Set up your destinations once.</h2>
         <p><strong>{items.length} files ready to prepare</strong> in {path.at(-1) ?? 'this folder'}. {directories.length} subfolders can be opened separately. Edit proposals freely. Approve once; later levels continue automatically.</p>
-        <AiSetup ai={ai} apply={setDraft} />
+        <AiSetup ai={ai} apply={setDraft} readFiles={() => fileContext(items)} />
       </div>
       <div className="bin-inputs">
-        {draft.map((name, i) => <label key={i}>BIN {i + 1}
-          <input aria-label={`Category ${i + 1}`} value={name} maxLength={80}
-            onChange={e => setDraft(v => v.map((s, j) => j === i ? e.target.value : s))} />
-        </label>)}
+        <LevelTree labels={draft} path={[]} ai={ai} demo={false} onChange={(index, value) => setDraft(names => names.map((name, i) => i === index ? value : name))} />
         <div className="buttons">
           <button disabled={draft.length >= 5} onClick={() => setDraft(b => [...b, `Category ${b.length + 1}`])}>+ Bin</button>
           <button disabled={draft.length <= 1} onClick={() => setDraft(b => b.slice(0, -1))}>− Bin</button>

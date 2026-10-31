@@ -35,11 +35,14 @@ function fileSummary(value: unknown): AiFileSummary {
     ...(f.approvedName !== undefined ? { approvedName: text(f.approvedName, 255) } : {}) };
 }
 export function planRequest(value: unknown): FolderPlanRequest {
-  const v = object(value, ['sessionId', 'requestId', 'parentId', 'parentLabel', 'prompt', 'files']);
-  // This local boundary intentionally has no membership upload route.
-  if (!Array.isArray(v.files) || v.files.length !== 0) throw new InputError('Folder membership is not accepted.');
+  const v = object(value, ['sessionId', 'requestId', 'parentId', 'parentLabel', 'prompt', 'files', 'fileContextApproved']);
+  // Metadata only, bounded and explicitly consented. File bytes/excerpts are rejected.
+  if (!Array.isArray(v.files) || v.files.length > 12 || (v.fileContextApproved !== undefined && typeof v.fileContextApproved !== 'boolean') || (v.files.length > 0 && v.fileContextApproved !== true)) throw new InputError('Approved bounded file context required.');
+  const files = v.files.map(fileSummary);
+  if (new Set(files.map(f => f.fileId)).size !== files.length) throw new InputError('Duplicate file IDs.');
+  if (files.some(f => f.approvedName && (/[/\\]/.test(f.approvedName) || f.approvedName.startsWith('.') || /(?:credential|secret|password|token|oauth|application_default|firebase-adminsdk|service[-_]?account|private[-_]?key|^id_(?:rsa|dsa|ecdsa|ed25519))|\.(?:pem|key|p12|pfx|jks|keystore)$/i.test(f.approvedName)))) throw new InputError('Sensitive names are excluded.');
   return { sessionId: id(v.sessionId), requestId: id(v.requestId), parentId: v.parentId === null ? null : id(v.parentId),
-    prompt: text(v.prompt, 2000), files: [], ...(v.parentLabel !== undefined ? { parentLabel: safeSegment(v.parentLabel) } : {}) };
+    prompt: text(v.prompt, 2000), files, ...(v.fileContextApproved === true ? { fileContextApproved: true } : {}), ...(v.parentLabel !== undefined ? { parentLabel: safeSegment(v.parentLabel) } : {}) };
 }
 export function hintRequest(value: unknown): FileHintRequest {
   const v = object(value, ['sessionId', 'requestId', 'planId', 'file', 'approvedBuckets', 'approvedExcerpt']);

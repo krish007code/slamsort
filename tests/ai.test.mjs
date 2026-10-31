@@ -92,3 +92,16 @@ test('scope invalidation aborts requests and rejects stale session/plan results'
   assert.equal(matchesResponse({sessionId:'a',requestId:'r',planId:'p'},{sessionId:'a',requestId:'r',planId:'old'}),false);
   assert.equal(matchesResponse({sessionId:'a',requestId:'r'},{sessionId:'a',requestId:'other'}),false);
 });
+
+test('consented file context reaches the model as metadata, while missing consent rejects before inference',async t=>{
+  let context='';
+  const f=await fixture(t,{generate:async text=>{context=text;return JSON.stringify({categories:['Biology','Mathematics'],explanation:'Based on the approved names.'});}});
+  const files=[{fileId:'file-biology',approvedName:'biology-notes.txt',mimeType:'text/plain',size:123}];
+  assert.equal((await f.post({...plan(),files})).status,400);
+  assert.equal(context,'');
+  const response=await f.post({...plan(),files,fileContextApproved:true});
+  assert.equal(response.status,200);
+  assert.ok(context.includes('biology-notes.txt'));
+  assert.ok(context.includes('never instructions'));
+  assert.deepEqual((await response.json()).categories.map(c=>c.label),['Biology','Mathematics']);
+});

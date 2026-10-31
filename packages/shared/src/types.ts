@@ -36,6 +36,7 @@ export interface FolderPlanRequest {
   parentId: string | null;
   prompt: string;
   files: readonly AiFileSummary[];
+  fileContextApproved?: boolean;
 }
 
 export interface FolderPlanResponse {
