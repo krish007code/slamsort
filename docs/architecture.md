@@ -17,6 +17,8 @@ flowchart TD
 
 React owns file queues, round snapshots, timer pause reasons, scoring and transitions. Phaser renders the court and emits intentions. Pure physics and correction-window modules are tested independently. The serial `FileEngine` alone mutates local files; Gemini cannot perform file operations.
 
+`App` coordinates the session; `DestinationSetup`, `LocalSessionPanel` and `RecoveryPanel` own their respective views. `useLocalSession` owns the journal connection, Web Lock, engine lifetime and refreshes. It closes the database on cleanup and prevents late initialization from updating an unmounted session. Pure `roundRules` and `journalState` functions centralize approval gates and reversible-move selection, including completed undo links whose bookkeeping write failed. Journal reads resolve only when their transaction commits and reject on abort. Recovery actions catch errors and serialize checks/acknowledgments.
+
 A settled basket writes an IndexedDB intent, chooses a collision-safe destination, copies and closes the file, verifies every byte in bounded chunks, rechecks both handles, and removes the source only after verification. Completion is journaled before points are awarded. Undo uses the same verification boundary. External-process races are still possible because browser filesystem APIs do not provide atomic compare-and-delete; uncertain operations block play pending recovery.
 
 ## Preparation and hierarchy

@@ -21,7 +21,11 @@ export interface Entry {
   source: LocalDirectory; targetParent: LocalDirectory; target?: LocalDirectory; category?: string | undefined;
   sourceName: string; targetName: string; fingerprint: Fingerprint; destinationFingerprint?: Fingerprint; error?: string; undoOf?: string | undefined; undone?: boolean;
 }
-export interface Journal { put(entry: Entry): Promise<void>; all(): Promise<Entry[]> }
+export interface Journal {
+  put(entry: Entry): Promise<void>;
+  all(): Promise<Entry[]>;
+  close?(): void;
+}
 const CHUNK = 1024 * 1024;
 export function validName(name: string): boolean {
   return name.trim() === name && name.length > 0 && name.length <= 80 && !/[<>:"/\\|?*]/.test(name) && !Array.from(name).some(c => c.charCodeAt(0) < 32) && !/[. ]$/.test(name) && name !== '.' && name !== '..' && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name);

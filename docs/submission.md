@@ -34,7 +34,7 @@ Do not claim the practice demo moves real files. A file-manager before/after vie
 3. **Solution and workflow.** Select folder → Gemini/manual bins → approve once → paper-ball shot → verified move → automatic child level.
 4. **Live proof.** Show the game and actual before/after folder state. Include Undo and the retained Duplicates bin.
 5. **Google Cloud architecture and trust.** Browser file engine + React/Phaser; Firebase token → Cloud Run API → Gemini on Vertex AI. No credentials in source or file-content upload for planning.
-6. **Engineering evidence.** 59 automated tests, dependency/security checks, keyboard assisted controls, bounded preparation and documented limitations.
+6. **Engineering evidence.** 68 automated tests, dependency/security checks, keyboard assisted controls, bounded preparation and documented limitations.
 7. **Next steps and business hypothesis.** Start with free individual use; validate demand with student/creator pilots. Potential paid customization and saved workflows are hypotheses, not implemented billing. Track completion, time-to-sort, errors and voluntary repeat usage only after consent and future implementation.
 
 ## Before using a scored attempt

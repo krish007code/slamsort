@@ -6,7 +6,10 @@ export async function openJournal(): Promise<Journal> {
     request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
     request.onblocked = () => reject(new Error('Journal database upgrade blocked by another tab.'));
   });
+  // Let another tab upgrade the database instead of holding it open indefinitely.
+  db.onversionchange = () => db.close();
   return {
+    close: () => db.close(),
     put: (entry: Entry) => new Promise<void>((resolve, reject) => {
       const tx = db.transaction('operations', 'readwrite', { durability: 'strict' });
       tx.objectStore('operations').put(entry);
@@ -14,7 +17,9 @@ export async function openJournal(): Promise<Journal> {
     }),
     all: () => new Promise<Entry[]>((resolve, reject) => {
       const tx = db.transaction('operations', 'readonly'); const request = tx.objectStore('operations').getAll();
-      request.onsuccess = () => resolve(request.result as Entry[]); request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve(request.result as Entry[]);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('Journal read aborted'));
     }),
   };
 }

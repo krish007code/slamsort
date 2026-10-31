@@ -6,6 +6,6 @@ export default [
   { ignores: ['**/node_modules/**', '**/dist/**', '**/.env', '**/.env.*'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  { files: ['**/*.{js,ts,tsx}'], languageOptions: { globals: globals.node } },
+  { files: ['**/*.{js,mjs,cjs,ts,tsx}'], languageOptions: { globals: globals.node } },
   { files: ['apps/web/src/**/*.{ts,tsx}'], languageOptions: { globals: globals.browser } },
 ];

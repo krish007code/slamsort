@@ -84,7 +84,7 @@ npm run lint
 npm test
 ```
 
-The automated suite contains 59 tests covering physics, correction windows, file integrity, undo, recovery, hierarchy traversal, metadata consent, validation, authentication and rate limits. Run `npm run check` for type checking, lint, tests and build. GitHub Actions repeats these checks from a clean install and audits dependencies. Test counts and audit results describe the current revision, not an assurance about future dependencies.
+The automated suite contains 68 tests covering physics, correction windows, file integrity, undo, recovery, hierarchy traversal, metadata consent, validation, authentication and rate limits. Run `npm run check` for type checking, lint, tests and build. GitHub Actions repeats these checks from a clean install and audits dependencies. Test counts and audit results describe the current revision, not an assurance about future dependencies.
 
 Live web/API and real Gemini requests have been smoke-tested. Native folder permissions and the full pointer/keyboard game still need a human browser check; no full WCAG conformance or end-to-end browser automation is claimed. The build reports a large lazy-loaded Phaser chunk; PDF support also loads separately.
 
