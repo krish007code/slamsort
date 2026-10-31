@@ -7,6 +7,7 @@ import { AiSetup } from '../ai/AiSetup';
 import { HintPanel } from '../ai/HintPanel';
 import { Court } from '../game/Court';
 import { unlockSound } from '../game/sound';
+import { useFileBuffer } from '../files/useFileBuffer';
 import { Preview } from '../files/Preview';
 import { FileEngine, inspectEntry, scan, validName } from '../files/engine';
 import type { Entry, Journal, LocalDirectory, LocalFile } from '../files/engine';
@@ -42,12 +43,13 @@ export function App() {
   const inFlight = useRef(false), io = useRef(false);
   const engine = useRef<FileEngine | undefined>(undefined);
   const current = items[0];
+  const buffer = useFileBuffer(items, `${mode}:${path.join('/')}:${round}`, entered && !setup && !result);
   const [prepared, setPrepared] = useState(false);
   useEffect(() => { setPrepared(false); }, [current, mode]);
   const pending = entries.filter(e => !['complete', 'retained'].includes(e.status));
   const undone = new Set(entries.filter(e => e.status === 'complete' && e.undoOf).map(e => e.undoOf));
   const undoable = entries.filter(e => e.status === 'complete' && !e.undoOf && !e.undone && !undone.has(e.id)).sort((a, b) => b.at - a.at)[0];
-  const reasons = [hintOpen && 'hint review', inspect && 'inspection', busy && 'file I/O', hidden && 'hidden tab', manual && 'manual pause', setup && 'setup', mode === 'local' && (!held || !journal) && 'storage / session lock', pending.length > 0 && mode === 'local' && 'recovery'].filter(Boolean);
+  const reasons = [buffer.loading && 'preparing files', !!buffer.error && 'file read error', hintOpen && 'hint review', inspect && 'inspection', busy && 'file I/O', hidden && 'hidden tab', manual && 'manual pause', setup && 'setup', mode === 'local' && (!held || !journal) && 'storage / session lock', pending.length > 0 && mode === 'local' && 'recovery'].filter(Boolean);
   const paused = reasons.length > 0;
   const enabled = prepared && !!current && !setup && !result && left > 0 && !paused && !flight && (mode === 'demo' || (!!journal && held && pending.length === 0));
   useEffect(() => {
@@ -120,6 +122,8 @@ export function App() {
     finally { io.current = false; setBusy(false); }
   }
   function startRound() {
+    if (!items.length) { setNotice('This folder has no loose files. Open a subfolder below or select another folder.'); return; }
+    if (ai.working) { setNotice('Wait for the folder proposal to finish, then approve the destinations.'); return; }
     if (draft.length < 1 || draft.length > 5 || draft.some(n => !validName(n)) || new Set(draft.map(n => n.toLocaleLowerCase())).size !== draft.length) { setNotice('Use 1–5 distinct folder names, without slashes, reserved names or trailing dots/spaces.'); return; }
     lastSuccess.current = undefined;
     ai.freeze(draft); setHintOpen(false); setLastMiss(false);
@@ -199,11 +203,25 @@ export function App() {
     <div className="session-privacy">Files remain on your device. Only prompts and excerpts you approve go to Google Vertex AI.
       <span>{ai.status.status}</span>
     </div>
+    {mode === 'local' && setup && items.length === 0 && !busy && <section className="empty-folder" role="status">
+      <p className="eyebrow">NO FILES IN THE LAUNCH QUEUE</p>
+      <h2>{directories.length ? 'Your files may be inside a subfolder.' : 'This folder is empty.'}</h2>
+      <p>The scan found 0 files directly inside this folder{directories.length ? ` and ${directories.length} subfolders` : ''}. Gemini is not holding up the game. Choose a subfolder to prepare its files.</p>
+      <div className="buttons">{directories.filter(name=>!name.startsWith('.') && !['node_modules','vendor'].includes(name)).map(name=><button key={name} disabled={busy} onClick={()=>void refine(name)}>Open {name} →</button>)}<button className="primary" onClick={()=>void chooseFolder()}>Select another folder</button></div>
+    </section>}
+    {!setup && (buffer.loading || buffer.error) && items.length > 0 && <section className="file-loading" role="status" aria-live="polite">
+      <div className="loading-machine" aria-hidden="true">▱ <span>→</span> ◉</div>
+      <p className="eyebrow">GETTING THE COURT READY</p>
+      <h2>{buffer.error ? 'File preparation needs attention' : 'Loading your first shots…'}</h2>
+      <p>{buffer.error || 'Preparing local file previews. The timer and launcher stay paused until the starting buffer is ready.'}</p>
+      {!buffer.error && <><progress max={Math.min(4,items.length)} value={buffer.count} /><strong>{buffer.count} / {Math.min(4,items.length)} files ready</strong><small>{items.length < 4 ? 'Fewer than four files: preparing every available file.' : 'Four files ready before the first shot. The next previews prepare while you play.'} Nothing uploads.</small></>}
+      {buffer.error && <button className="primary" onClick={()=>void chooseFolder()}>Reopen a folder</button>}
+    </section>}
     {setup && <section className="setup-card">
       <div>
         <p className="eyebrow">YOUR FOLDERS, YOUR CALL</p>
         <h2>Review 1–5 destinations.</h2>
-        <p>Only loose files are included; {directories.length} existing folders are deferred. Edit proposals freely. Approval freezes the round.</p>
+        <p>Files directly inside this folder are included; {directories.length} subfolders can be opened separately. Edit proposals freely. Approval freezes the round.</p>
         <AiSetup ai={ai} apply={setDraft} />
       </div>
       <div className="bin-inputs">
@@ -216,11 +234,11 @@ export function App() {
           <button disabled={draft.length <= 1} onClick={() => setDraft(b => b.slice(0, -1))}>− Bin</button>
           <label>Seconds<input type="number" min={15} max={3600} value={duration}
             onChange={e => setDuration(Math.max(15, Math.min(3600, Number(e.target.value) || 120)))} /></label>
-          <button className="primary" onClick={startRound} disabled={mode === 'local' && (!held || !journal || pending.length > 0)}>Approve & play</button>
+          <button className="primary" onClick={startRound} disabled={!items.length || ai.working || (mode === 'local' && (!held || !journal || pending.length > 0))}>Approve & play</button>
         </div>
       </div>
     </section>}
-    {!setup && <section className="play-layout" aria-label="Sorting session">
+    {!setup && !buffer.loading && !buffer.error && items.length > 0 && <section className="play-layout" aria-label="Sorting session">
       <aside className="file-card session-file">
         <div className="file-heading">
           <p className="eyebrow">{mode === 'demo' ? 'FICTIONAL SAMPLE' : 'LOCAL FILE'}</p>
@@ -228,7 +246,7 @@ export function App() {
         </div>
         <h2 title={current?.name}>{current?.name ?? 'The bench is clear.'}</h2>
         {current && <>
-          <Preview handle={current.handle} demoName={current.name} inspect={inspect} />
+          <Preview preparedFile={buffer.first} handle={current.handle} demoName={current.name} inspect={inspect} />
           <div className="buttons">
             <button disabled={busy || flight || hintOpen} aria-pressed={inspect} onClick={() => setInspect(v => !v)}>{inspect ? 'Close inspection' : 'Inspect / pause'}</button>
             <button disabled={busy || flight || setup || result || hintOpen} onClick={() => {

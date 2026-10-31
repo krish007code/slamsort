@@ -33,6 +33,8 @@ No credentials are required for manual play. For real Gemini, use the user-confi
 
 ## Play
 
+Before each initial round, a loading screen prepares four local file previews (or all available files when there are fewer than four). File-read errors block play with a recovery action. Subsequent lookahead prepares the next files while the user plays. Snippet preparation remains local; it does not automatically upload contents to Gemini.
+
 - Select a folder first, review destination names, and approve the round. A left-hand assembly line carries each file-type document through a crumpler and into the teal launcher. Read the filename and local preview beside the court.
 - Drag **back and down** from the ball, then release. Power is clamped; dots follow the same launch velocity and gravity as the ball. Floor, walls and rims bounce. A downward crossing inside a hoop opening starts a one-second correction window. Grab the visible paper ball to pause that window, then drop it into any hoop to change the destination. Dropping outside returns the file unchanged. Only the settled destination triggers a file move; a miss retries the same file.
 - Keyboard: choose a bin with **1–5**, then **Space**, or use the destination selector and **Fire** button for an assisted arc. Pointer cancellation cancels the aim. Enable original synthesized effects with **Sound on**.
@@ -44,7 +46,7 @@ No credentials are required for manual play. For real Gemini, use the user-confi
 
 Use desktop Chrome or Edge on localhost/HTTPS with a disposable sample folder for the first run. The directory picker requires an explicit click and browser permission. Unsupported/restricted browsers keep Demo available.
 
-Only loose files are scanned. Existing directories, including created category directories, are deferred. Images under 30 MiB, text prefixes and the first PDF page under 25 MiB have local previews; other formats/sizes show metadata. PDF.js and its matching worker load only for PDF previews. Object URLs and PDF tasks are released.
+Files directly inside the selected folder are scanned. If that queue is empty, the app blocks play and shows buttons to open subfolders instead of presenting a disabled court. Existing directories are opened separately; no directory is automatically moved. Images under 30 MiB, text prefixes and the first PDF page under 25 MiB have local previews; other formats/sizes show metadata. PDF.js and its matching worker load only for PDF previews. Object URLs and PDF tasks are released.
 
 On a successful basket, the separate serial engine:
 
