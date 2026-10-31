@@ -1,13 +1,13 @@
-# Two-project public deployment handoff
+# SlamSort public deployment
 
-These artifacts are ready for a human/supervisor to review and deploy. This code writer has not deployed, created IAM, committed or published. No private environment/credential file was read. The public playable URL and GitHub URL are supplied after the supervisor performs those actions.
+The API and static website use separate Cloud Run services in `slamsort`. Firebase Authentication uses `slamsort-245f9`. No private environment/credential file was read. Source: https://github.com/krish007code/slamsort.
 
 ## Project ownership
 
 | Purpose | Project |
 | --- | --- |
-| Vertex inference, runtime billing, Cloud Run, Cloud Build, Artifact Registry | `slamsort` |
-| Firebase Hosting, Firebase Authentication, web app, ID token audience/issuer | `slamsort-245f9` |
+| Website/API, Vertex inference, runtime billing, Cloud Run, Cloud Build, Artifact Registry | `slamsort` |
+| Firebase Authentication, web app, ID token audience/issuer; optional Hosting | `slamsort-245f9` |
 
 The Admin SDK is explicitly initialized with `FIREBASE_AUTH_PROJECT_ID` set to the Firebase project. It validates token signature, expiry, audience and issuer. It does not derive the auth project from ADC, Cloud Run or `GOOGLE_CLOUD_PROJECT`. Gemini remains configured with `GOOGLE_CLOUD_PROJECT=slamsort`. Verification uses public signing certificates; no cross-project Firebase user-management IAM or service-account JSON is needed. Revocation/user-disabled checks requiring Auth RPCs are not enabled; expiry/signature verification is enabled.
 
@@ -136,3 +136,28 @@ Unchanged limits: body 24 KiB, prompt 2000 chars, excerpt 8000 chars, 1–5 safe
 Build/typecheck/lint and automated tests cover the prior file safety/physics checks plus public auth rejection, explicit audience selection, CORS, disabled defaults, token-mode separation and no sign-in on config bootstrap. Live public auth and public URL acceptance require the user's completed Firebase web config/provider setup and the supervisor's deployment. Verify actual Anonymous sign-in, plan, approved hint, manual play, local folder permission/undo, PDF worker and responsive layout on the deployed origin before sharing the GitHub/playable URLs.
 
 No GitHub Actions or private deployment keys are introduced. The supervisor owns GitHub publication after reviewing tracked paths, diffs and secret scanning. Do not publish private sample files, credentials, build caches or logs.
+
+## Active Cloud Run website
+
+Firebase Hosting was unavailable to the deployment account, so the public website is served by a second Cloud Run service.
+
+- Website: https://slamsort-web-162765212832.asia-south1.run.app
+- API: https://slamsort-api-162765212832.asia-south1.run.app
+- Region: `asia-south1`
+- Both services scale to zero with a one-instance maximum.
+- `slamsort-web` runtime has no Vertex role. The `slamsort-api` runtime has Vertex AI User.
+- Exact website origin is included in the API's allowed origins.
+
+Prepare an explicit, credential-free website build context outside the repository:
+
+```sh
+node scripts/prepare-web-context.mjs /tmp/slamsort-web-build
+gcloud run deploy slamsort-web --project=slamsort --region=asia-south1 \
+  --source=/tmp/slamsort-web-build \
+  --service-account=slamsort-web@slamsort.iam.gserviceaccount.com \
+  --build-service-account=projects/slamsort/serviceAccounts/slamsort-build@slamsort.iam.gserviceaccount.com \
+  --max-instances=1 --min-instances=0 --memory=256Mi --port=8080 \
+  --no-invoker-iam-check
+```
+
+Cloud Run permits HTTP transport for browser access. The API independently verifies Firebase ID tokens before model inference. Anonymous authentication plus per-instance limits is suitable for the hackathon demo; it is not a global spending cap or strong protection against determined anonymous-account abuse. Budgets notify rather than automatically stop spending.

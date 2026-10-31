@@ -1,10 +1,15 @@
 # SlamSort
 
-**Shoot files. Clear clutter.** A local playable React/TypeScript + Phaser basketball sorting game. The default **Demo** uses clearly labeled fictional files and never changes disk files. Local folder mode starts only from **Open a local folder**; only explicitly approved AI prompts and optional approved filename/excerpts leave your device.
+**Shoot files. Clear clutter.** A React/TypeScript + Phaser basketball game that organizes real files. The default **Demo** uses clearly labeled fictional files and never changes disk files. Local folder mode starts only from **Open a local folder**; only explicitly approved AI prompts and optional approved filename/excerpts leave your device.
+
+## Links
+
+- [Play SlamSort](https://slamsort-web-162765212832.asia-south1.run.app)
+- [Source repository](https://github.com/krish007code/slamsort)
 
 ## Run locally
 
-Dependencies are already installed. Use Node.js 24.12+ and npm 11. From the repository root:
+Use Node.js 24.12+ and npm 11. From a fresh checkout, run `npm ci --ignore-scripts`. Then, from the repository root:
 
 ```sh
 npm run dev:web
@@ -73,10 +78,10 @@ The root build generates shared declarations, `apps/api/dist` and `apps/web/dist
 
 ## Public deployment and authentication
 
-The app supports default-disabled AI, local loopback AI, and explicitly enabled public Firebase-authenticated AI. Hosting/Auth use **slamsort-245f9**; Vertex/Cloud Run/billing use **slamsort**. Their project IDs are deliberately separate: Admin verifies the Firebase audience/issuer, while Gemini uses the Vertex project.
+The app supports default-disabled AI, local loopback AI, and explicitly enabled public Firebase-authenticated AI. Authentication uses **slamsort-245f9**. The website, API, Vertex AI, and runtime billing use Cloud Run project **slamsort**. Firebase Hosting configuration is retained as an optional deployment target. Their project IDs are deliberately separate: Admin verifies the Firebase audience/issuer, while Gemini uses the Vertex project.
 
 For the supervisor's exact environment variables, public Firebase config shape, Docker build/run, Cloud Run source deployment, static Hosting/CSP preparation and GitHub handoff, see [deployment instructions](docs/deployment.md). The root Dockerfile and allowlisted upload/build contexts exclude private material. `firebase.json` serves only `apps/web/dist` with a static SPA fallback; it has no cross-project Run rewrite.
 
 Only `VITE_API_BASE_URL=https://<API_ORIGIN>` is needed at frontend build time. Firebase public web metadata is fetched from runtime `/api/config`; no server credentials are bundled. Public anonymous sign-in happens only after an explicit AI action and reuses the current in-memory user. API requests use Firebase Bearer tokens, strict exact-origin CORS, bounded schemas, per-user/per-instance rate/concurrency limits and sanitized errors. Manual play works on auth/network failure. `npm run prepare:hosting` pins the CSP to that same exact API origin before Hosting deploy.
 
-Vite's isolated `apps/web/env-public` environment directory remains intact; there is no dotenv loader. No private environment/credential file was read or modified. No deployment, IAM, commit or publication was performed by this writer. [SECURITY.md](SECURITY.md) describes the credential boundary and pre-publish review.
+Vite's isolated `apps/web/env-public` environment directory remains intact; there is no dotenv loader. No private environment/credential file was read or modified. The API and website are deployed on Cloud Run with separate service accounts. Only the API identity has Vertex AI access. [SECURITY.md](SECURITY.md) describes the credential boundary and pre-publish review.
