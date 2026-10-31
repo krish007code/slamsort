@@ -51,6 +51,7 @@ export function App() {
   const undoable = entries.filter(e => e.status === 'complete' && !e.undoOf && !e.undone && !undone.has(e.id)).sort((a, b) => b.at - a.at)[0];
   const reasons = [buffer.loading && 'preparing files', !!buffer.error && 'file read error', hintOpen && 'hint review', inspect && 'inspection', busy && 'file I/O', hidden && 'hidden tab', manual && 'manual pause', setup && 'setup', mode === 'local' && (!held || !journal) && 'storage / session lock', pending.length > 0 && mode === 'local' && 'recovery'].filter(Boolean);
   const paused = reasons.length > 0;
+  const approvalBlocked = busy ? 'Opening your folder…' : !items.length ? 'Open a subfolder containing files before approving.' : ai.working ? 'Waiting for the Gemini proposal. You can approve when it finishes.' : mode === 'local' && !journal ? 'Local storage is not ready. Check the local session message below.' : mode === 'local' && !held ? 'Another SlamSort tab holds the file session. Close that tab to continue here.' : mode === 'local' && pending.length > 0 ? 'Review interrupted operations below before starting another round.' : '';
   const enabled = prepared && !!current && !setup && !result && left > 0 && !paused && !flight && (mode === 'demo' || (!!journal && held && pending.length === 0));
   useEffect(() => {
     const release = acquireSession(setHeld);
@@ -122,8 +123,7 @@ export function App() {
     finally { io.current = false; setBusy(false); }
   }
   function startRound() {
-    if (!items.length) { setNotice('This folder has no loose files. Open a subfolder below or select another folder.'); return; }
-    if (ai.working) { setNotice('Wait for the folder proposal to finish, then approve the destinations.'); return; }
+    if (approvalBlocked) { setNotice(approvalBlocked); return; }
     if (draft.length < 1 || draft.length > 5 || draft.some(n => !validName(n)) || new Set(draft.map(n => n.toLocaleLowerCase())).size !== draft.length) { setNotice('Use 1–5 distinct folder names, without slashes, reserved names or trailing dots/spaces.'); return; }
     lastSuccess.current = undefined;
     ai.freeze(draft); setHintOpen(false); setLastMiss(false);
@@ -140,7 +140,7 @@ export function App() {
     const proposal = ai.children[name];
     ai.invalidate(); setHintOpen(false);
     io.current = true; setBusy(true);
-    try { const child = await dir.getDirectoryHandle(name); const found = await scan(child); setDir(child); setPath(p => [...p, name]); setItems(found.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]); setDirectories(found.directories); setDraft(proposal?.labels ?? ['Keep', 'Reference', 'Archive']); setInspect(false); setSetup(true); setResult(false); setRound(n => n + 1); setNotice(`Refine ${name}. ${proposal ? `Gemini draft: ${proposal.explanation}` : 'Review editable subfolder names before starting.'}`); }
+    try { const child = await dir.getDirectoryHandle(name); const found = await scan(child); setDir(child); setPath(p => [...p, name]); setItems(found.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]); setDirectories(found.directories); setDraft(proposal?.labels ?? (setup ? draft : ['Keep', 'Reference', 'Archive'])); setInspect(false); setSetup(true); setResult(false); setRound(n => n + 1); setNotice(`Refine ${name}. ${proposal ? `Gemini draft: ${proposal.explanation}` : 'Review editable subfolder names before starting.'}`); }
     catch (e) { setNotice(messageOf(e)); }
     finally { io.current = false; setBusy(false); }
   }
@@ -205,8 +205,8 @@ export function App() {
     </div>
     {mode === 'local' && setup && items.length === 0 && !busy && <section className="empty-folder" role="status">
       <p className="eyebrow">NO FILES IN THE LAUNCH QUEUE</p>
-      <h2>{directories.length ? 'Your files may be inside a subfolder.' : 'This folder is empty.'}</h2>
-      <p>The scan found 0 files directly inside this folder{directories.length ? ` and ${directories.length} subfolders` : ''}. Gemini is not holding up the game. Choose a subfolder to prepare its files.</p>
+      <h2>{directories.length ? 'Choose a subfolder with files to play.' : 'Choose a folder with files to play.'}</h2>
+      <p>The scan found 0 files directly inside this folder{directories.length ? ` and ${directories.length} subfolders` : ''}. Open one below, or select another folder. Your destination names are kept while you browse; approval appears when files are available.</p>
       <div className="buttons">{directories.filter(name=>!name.startsWith('.') && !['node_modules','vendor'].includes(name)).map(name=><button key={name} disabled={busy} onClick={()=>void refine(name)}>Open {name} →</button>)}<button className="primary" onClick={()=>void chooseFolder()}>Select another folder</button></div>
     </section>}
     {!setup && (buffer.loading || buffer.error) && items.length > 0 && <section className="file-loading" role="status" aria-live="polite">
@@ -217,11 +217,11 @@ export function App() {
       {!buffer.error && <><progress max={Math.min(4,items.length)} value={buffer.count} /><strong>{buffer.count} / {Math.min(4,items.length)} files ready</strong><small>{items.length < 4 ? 'Fewer than four files: preparing every available file.' : 'Four files ready before the first shot. The next previews prepare while you play.'} Nothing uploads.</small></>}
       {buffer.error && <button className="primary" onClick={()=>void chooseFolder()}>Reopen a folder</button>}
     </section>}
-    {setup && <section className="setup-card">
+    {setup && items.length > 0 && <section className="setup-card">
       <div>
         <p className="eyebrow">YOUR FOLDERS, YOUR CALL</p>
         <h2>Review 1–5 destinations.</h2>
-        <p>Files directly inside this folder are included; {directories.length} subfolders can be opened separately. Edit proposals freely. Approval freezes the round.</p>
+        <p><strong>{items.length} files ready to prepare</strong> in {path.at(-1) ?? 'this folder'}. {directories.length} subfolders can be opened separately. Edit proposals freely. Approval freezes the round.</p>
         <AiSetup ai={ai} apply={setDraft} />
       </div>
       <div className="bin-inputs">
@@ -234,8 +234,9 @@ export function App() {
           <button disabled={draft.length <= 1} onClick={() => setDraft(b => b.slice(0, -1))}>− Bin</button>
           <label>Seconds<input type="number" min={15} max={3600} value={duration}
             onChange={e => setDuration(Math.max(15, Math.min(3600, Number(e.target.value) || 120)))} /></label>
-          <button className="primary" onClick={startRound} disabled={!items.length || ai.working || (mode === 'local' && (!held || !journal || pending.length > 0))}>Approve & play</button>
+          <button className="primary" onClick={startRound} disabled={!!approvalBlocked} aria-describedby={approvalBlocked ? 'approval-blocked' : undefined}>Approve & play</button>
         </div>
+        {approvalBlocked && <p id="approval-blocked" role="status">{approvalBlocked}</p>}
       </div>
     </section>}
     {!setup && !buffer.loading && !buffer.error && items.length > 0 && <section className="play-layout" aria-label="Sorting session">
