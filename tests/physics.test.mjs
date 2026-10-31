@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { crossing, hoopsFor, keyboardVelocity, step, position, ORIGIN, pullVelocity, MAX_SPEED } from '../apps/web/src/game/physics.ts';
+import { crossing, hoopsFor, keyboardVelocity, step, position, ORIGIN, pullVelocity, MAX_SPEED, FLOOR } from '../apps/web/src/game/physics.ts';
 test('only a downward crossing fully inside the rim scores', () => {
   const h = {x: 100, y: 100};
   assert.equal(crossing({x:100,y:90}, {x:100,y:110}, h), true);
@@ -30,7 +30,7 @@ test('dotted trajectory and simulated free flight agree', () => {
 });
 test('floor, walls and rims bounce instead of scoring side impacts', () => {
   assert.ok(step({x:20,y:450,vx:-1000,vy:0},.02,[]).ball.vx>0);
-  assert.ok(step({x:200,y:489,vx:100,vy:100},.02,[]).ball.vy<0);
+  assert.ok(step({x:200,y:FLOOR-13,vx:100,vy:100},.02,[]).ball.vy<0);
   const h={id:'0',label:'Bin',x:500,y:300};
   const r=step({x:450,y:297,vx:300,vy:0},.01,[h]); assert.equal(r.basket,undefined);assert.equal(r.bounce,true);
 });

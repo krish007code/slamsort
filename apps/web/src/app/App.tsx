@@ -16,6 +16,9 @@ const samples = (): Item[] => SAMPLES.map(name => ({ name }));
 const messageOf = (e: unknown) => e instanceof Error ? e.message : String(e);
 export function App() {
   const ai = useAi();
+  const [entered, setEntered] = useState(false);
+  const [resetShot, setResetShot] = useState(0);
+  const lastSuccess = useRef<Item | undefined>(undefined);
   const [hintOpen, setHintOpen] = useState(false);
   const [lastMiss, setLastMiss] = useState(false);
   const [mode, setMode] = useState<'demo' | 'local'>('demo');
@@ -54,10 +57,10 @@ export function App() {
   }, []);
   const expired = left <= 0;
   useEffect(() => {
-    if (paused || result || setup || !current || expired) return;
+    if (!entered || (!prepared && !flight) || paused || result || setup || !current || expired) return;
     const interval = window.setInterval(() => setLeft(t => Math.max(0, t - .1)), 100);
     return () => window.clearInterval(interval);
-  }, [paused, result, setup, current, expired]);
+  }, [entered, prepared, flight, paused, result, setup, current, expired]);
   useEffect(() => { if (!flight && !busy && !setup && (left <= 0 || items.length === 0)) setResult(true); }, [left, items.length, flight, busy, setup]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -82,6 +85,7 @@ export function App() {
         await engine.current.move(dir, current.name, dir, category);
         await refreshJournal();
       }
+      lastSuccess.current = current;
       setInspect(false); setScore(n => n + 1); setItems(queue => queue.slice(1));
       setNotice(mode === 'demo' ? `Sample basket! ${current.name} → ${category}. No real files changed.` : `Verified move: ${current.name} → ${category}. Undo is available.`);
     } catch (e) { setNotice(`No point awarded. ${messageOf(e)} Check the journal and both folders.`); await refreshJournal().catch(() => {}); }
@@ -96,6 +100,7 @@ export function App() {
       const selected = await picker({ mode: 'readwrite' });
       if (await selected.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Write permission was not granted.');
       const found = await scan(selected);
+      setEntered(true); lastSuccess.current = undefined;
       setDir(selected); setPath([selected.name]); setMode('local'); setItems(found.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]); setDirectories(found.directories);
       setSetup(true); setResult(false); setInspect(false); setManual(false); setScore(0); setDraft(DEFAULT_BINS); setRound(1);
       setNotice(`Opened ${selected.name}: ${found.files.length} loose files. ${found.directories.length} folders deferred. Choose bins, then freeze this round.`);
@@ -104,12 +109,14 @@ export function App() {
   }
   function startRound() {
     if (draft.length < 1 || draft.length > 5 || draft.some(n => !validName(n)) || new Set(draft.map(n => n.toLocaleLowerCase())).size !== draft.length) { setNotice('Use 1–5 distinct folder names, without slashes, reserved names or trailing dots/spaces.'); return; }
+    lastSuccess.current = undefined;
     ai.freeze(draft); setHintOpen(false); setLastMiss(false);
     setBins([...draft]); setInspect(false); setDestination(0); setLeft(duration); setScore(0); setSetup(false); setResult(false); setManual(false); setNotice('Plan frozen for this round. Pull back from the ball, or choose a bin and Fire.');
   }
   function demo() {
     if (io.current || inFlight.current) return;
     ai.invalidate(true); setHintOpen(false); setLastMiss(false);
+    setEntered(true); lastSuccess.current = undefined;
     setMode('demo'); setDir(undefined); setPath([]); setItems(samples()); setSkipped([]); setBins(DEFAULT_BINS); setDraft(DEFAULT_BINS); setDuration(120); setLeft(120); setScore(0); setSetup(false); setResult(false); setManual(false); setInspect(false); setRound(1); setDestination(0); setNotice('Demo reset. Sample files only; nothing on disk changes.');
   }
   async function refine(name: string) {
@@ -135,16 +142,53 @@ export function App() {
     } catch (e) { setNotice(`Refresh stopped: ${messageOf(e)}`); }
     finally { io.current = false; setBusy(false); }
   }
-  async function undo() {
+  async function undo(retry = false) {
     if (!undoable || !engine.current || io.current || inFlight.current) return;
     io.current = true; setBusy(true);
     try {
       const restored = await engine.current.undo(undoable); await refreshJournal();
-      if (dir && await dir.isSameEntry(restored.target!)) { const found = await scan(dir); setItems(found.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]); }
+      if (dir && await dir.isSameEntry(restored.target!)) { const found = await scan(dir); const restoredItems = found.files.map(handle => ({ name: handle.name, handle }));
+        if (retry) restoredItems.sort((a, b) => Number(b.name === restored.targetName) - Number(a.name === restored.targetName));
+        setItems(restoredItems); setSkipped([]); }
+      lastSuccess.current = undefined;
+      if (retry) { setScore(n => Math.max(0, n - 1)); setResult(false); setPrepared(false); setResetShot(n => n + 1); if (left <= 0) setLeft(duration); }
       setNotice(`Undo verified. Restored as ${restored.targetName}; existing names were preserved.`);
     } catch (e) { setNotice(`Undo stopped: ${messageOf(e)}`); await refreshJournal().catch(() => {}); }
     finally { io.current = false; setBusy(false); }
   }
+  async function reshoot() {
+    if (io.current || busy) return;
+    // Cancel the visual projectile before any basket intent can become a move.
+    if (inFlight.current || lastMiss || !lastSuccess.current) {
+      inFlight.current = false; setFlight(false); setPrepared(false);
+      setResetShot(n => n + 1); setLastMiss(false); setResult(false);
+      if (left <= 0) setLeft(duration);
+      setNotice('Reshoot ready. Same file; no file operation performed.');
+      return;
+    }
+    if (mode === 'local') { await undo(true); return; }
+    const previous = lastSuccess.current; lastSuccess.current = undefined;
+    setItems(queue => [previous, ...queue]); setScore(n => Math.max(0, n - 1));
+    setResult(false); setPrepared(false); setResetShot(n => n + 1);
+    if (left <= 0) setLeft(duration);
+    setNotice('Previous sample returned to the launcher. Take the shot again.');
+  }
+  if (!entered) return <main className="folder-entry">
+    <div className="entry-backdrop" aria-hidden="true"><span>SLAM</span><span>SORT</span></div>
+    <header><a className="brand" href="#start"><span>◉</span> SlamSort</a><span className="eyebrow">YOUR FILES. YOUR SHOT.</span></header>
+    <section className="entry-card" id="start">
+      <p className="eyebrow">01 / CHOOSE YOUR STARTING LINE</p>
+      <div className="folder-illustration" aria-hidden="true">▱<span>↗</span></div>
+      <h1>First, pick<br /><em>a messy folder.</em></h1>
+      <p>Turn your files into paper balls. Aim for their new home.<br />Every basket actually organizes your folder.</p>
+      <button className="primary entry-choose" disabled={busy || !supportsLocalFolders()} onClick={() => void chooseFolder()}>{busy ? 'Opening folder…' : 'Select a folder ↗'}</button>
+      <button className="entry-demo" disabled={busy} onClick={demo}>Just looking? Try the demo →</button>
+      <small>Files stay on your device. Folder access requires your permission.<br />Use a copied sample folder first. Desktop Chromium recommended.</small>
+      {!supportsLocalFolders() && <p role="status">This browser does not support local folders. You can still play the demo.</p>}
+      <p className="entry-notice" role="status">{notice.startsWith('Welcome') ? '' : notice}</p>
+    </section>
+    <footer>SHOOT FILES. CLEAR CLUTTER.<span>GOOGLE CLOUD × A LITTLE GOOD AIM</span></footer>
+  </main>;
   return <main className="shell session-shell">
     <header className="masthead">
       <a className="brand" href="#court"><span>◉</span> SlamSort</a>
@@ -179,7 +223,7 @@ export function App() {
         </div>
       </div>
     </section>}
-    <section className="play-layout" aria-label="Sorting session">
+    {!setup && <section className="play-layout" aria-label="Sorting session">
       <aside className="file-card session-file">
         <div className="file-heading">
           <p className="eyebrow">{mode === 'demo' ? 'FICTIONAL SAMPLE' : 'LOCAL FILE'}</p>
@@ -212,7 +256,7 @@ export function App() {
           {lastMiss && <button disabled={busy || flight} onClick={() => { setLastMiss(false); setNotice('Miss undone: same file, no point, no file operation. Aim again.'); }}>↶ Undo miss · retry unchanged</button>}
         </div>
         {mode === 'local' && <button className="sidebar-undo" disabled={!undoable || busy || flight || hintOpen || pending.length > 0 || !held}
-          onClick={() => void undo()}>↶ Undo last verified move</button>}
+          onClick={() => void undo(false)}>↶ Undo last verified move</button>}
       </aside>
       <section className="court-panel" id="court">
         <div className="court-heading">
@@ -225,16 +269,17 @@ export function App() {
           </div>
         </div>
         <div className="current-file-strip"><span>{flight ? 'PAPER IN FLIGHT' : 'THIS FILE → THIS PAPER BALL'}</span><strong>{current?.name ?? 'Round complete'}</strong></div>
-        <Court labels={bins} fileKey={`${mode}:${path.join('/')}:${current?.name ?? 'done'}`} filename={current?.name ?? ''}
+        <Court reset={resetShot} labels={bins} fileKey={`${mode}:${path.join('/')}:${current?.name ?? 'done'}`} filename={current?.name ?? ''}
           onReady={setPrepared} enabled={enabled} paused={paused || result || setup} sound={sound} fire={fire} destination={destination}
           onShot={() => { if (!inFlight.current) { inFlight.current = true; setLastMiss(false); setFlight(true); } }}
           onSettle={basket => void settle(basket)} />
         <div className="court-caption">
+          <button className="reshoot-button" disabled={busy || setup || hintOpen || (mode === 'local' && pending.length > 0)} onClick={() => void reshoot()}>↶ Reshoot</button>
           <span>PULL BACK ↙ · RELEASE ↗ · MISSES KEEP YOUR FILE</span>
           <button onClick={() => setManual(p => !p)} disabled={setup || result}>{manual ? '▶ Resume' : 'Ⅱ Pause'}</button>
         </div>
       </section>
-    </section>
+    </section>}
     <div className="status" role="status">{notice}{paused && <small>Paused: {reasons.join(' + ')}</small>}</div>
     {hintOpen && current && <HintPanel key={`${mode}:${path.join('/')}:${current.name}`} ai={ai} name={current.name}
       handle={current.handle} labels={bins} onClose={() => setHintOpen(false)} />}

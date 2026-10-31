@@ -1,12 +1,15 @@
 export const GRAVITY = 900;
-export const ORIGIN = { x: 200, y: 438 };
+export const WIDTH = 1200;
+export const HEIGHT = 700;
+export const FLOOR = 676;
+export const ORIGIN = { x: 330, y: 566 };
 export const RADIUS = 12;
 export const MAX_SPEED = 1080;
 export interface Point { x: number; y: number }
 export interface Hoop extends Point { id: string; label: string }
 export interface Ball extends Point { vx: number; vy: number }
 export function hoopsFor(labels: string[]): Hoop[] {
-  return labels.map((label, i) => ({ id: String(i), label, x: 530 + i * (550 / Math.max(1, labels.length - 1)), y: 345 - i * (150 / Math.max(1, labels.length - 1)) }));
+  return labels.map((label, i) => ({ id: String(i), label, x: 620 + i * (490 / Math.max(1, labels.length - 1)), y: 470 - i * (240 / Math.max(1, labels.length - 1)) }));
 }
 export function pullVelocity(pointer: Point): Point {
   const x = (ORIGIN.x - pointer.x) * 5.5, y = (ORIGIN.y - pointer.y) * 5.5;
@@ -30,8 +33,8 @@ export function step(ball: Ball, dt: number, hoops: Hoop[]): { ball: Ball; baske
   const hit = hoops.find(h => crossing(ball, next, h));
   if (hit) return { ball: next, basket: hit.id, bounce: false };
   let bounce = false;
-  if (next.x < RADIUS || next.x > 1200 - RADIUS) { next.x = Math.max(RADIUS, Math.min(1200 - RADIUS, next.x)); next.vx *= -0.67; bounce = true; }
-  if (next.y > 502 - RADIUS) { next.y = 502 - RADIUS; next.vy = -Math.abs(next.vy) * 0.55; next.vx *= 0.78; bounce = true; }
+  if (next.x < RADIUS || next.x > WIDTH - RADIUS) { next.x = Math.max(RADIUS, Math.min(WIDTH - RADIUS, next.x)); next.vx *= -0.67; bounce = true; }
+  if (next.y > FLOOR - RADIUS) { next.y = FLOOR - RADIUS; next.vy = -Math.abs(next.vy) * 0.55; next.vx *= 0.78; bounce = true; }
   for (const h of hoops) for (const x of [h.x - 43, h.x + 43]) {
     const dx = next.x - x, dy = next.y - h.y, d = Math.hypot(dx, dy);
     if (d < RADIUS + 4 && d > 0) {

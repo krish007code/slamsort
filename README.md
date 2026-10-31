@@ -1,6 +1,6 @@
 # SlamSort
 
-**Shoot files. Clear clutter.** A React/TypeScript + Phaser basketball game that organizes real files. The default **Demo** uses clearly labeled fictional files and never changes disk files. Local folder mode starts only from **Open a local folder**; only explicitly approved AI prompts and optional approved filename/excerpts leave your device.
+**Shoot files. Clear clutter.** A React/TypeScript + Phaser basketball game that organizes real files. The opening screen asks you to select a folder. The optional **Demo** uses clearly labeled fictional files and never changes disk files. Local folder mode starts only from **Open a local folder**; only explicitly approved AI prompts and optional approved filename/excerpts leave your device.
 
 ## Links
 
@@ -33,9 +33,10 @@ No credentials are required for manual play. For real Gemini, use the user-confi
 
 ## Play
 
-- Read the current filename and local preview. The paper crumples into a ball after a brief preview interval.
+- Select a folder first, review destination names, and approve the round. A left-hand assembly line carries each file-type document through a crumpler and into the teal launcher. Read the filename and local preview beside the court.
 - Drag **back and down** from the ball, then release. Power is clamped; dots follow the same launch velocity and gravity as the ball. Floor, walls and rims bounce. A downward crossing inside a hoop opening scores; a miss retries the same file.
 - Keyboard: choose a bin with **1–5**, then **Space**, or use the destination selector and **Fire** button for an assisted arc. Pointer cancellation cancels the aim. Enable original synthesized effects with **Sound on**.
+- **Reshoot** resets a missed or active shot without moving anything. After a successful basket, it uses the verified undo engine to restore the last file before retrying; demo mode restores its sample and score.
 - **Inspect** pauses the timer. Manual pause, file I/O, hidden document, setup, recovery and unavailable local storage/lock each independently pause it. The default is **120 seconds**, configurable in setup. Expiry stops new shots, settles a shot/operation already in progress, then shows a result. Resume remaining includes skipped files.
 - **Configure next round / timer** opens manual setup. Choose 1–5 distinct safe category names and freeze the plan. The current round's hoop targets remain fixed.
 
