@@ -1,0 +1,36 @@
+{
+  "name": "slamsort",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "packageManager": "npm@11.19.1",
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@slamsort/web --",
+    "dev:api": "npm run dev -w @slamsort/api",
+    "build": "npm run build -w @slamsort/shared && npm run build -w @slamsort/api && npm run build -w @slamsort/web",
+    "typecheck": "npm run build -w @slamsort/shared && npm run typecheck --workspaces",
+    "lint": "eslint . --max-warnings=0",
+    "predev:web": "npm run build -w @slamsort/shared",
+    "test": "node --test tests/*.test.mjs",
+    "prepare:hosting": "node scripts/prepare-hosting.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.0.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "globals": "^17.0.0"
+  },
+  "allowScripts": {
+    "@google/genai": false,
+    "protobufjs": false,
+    "@firebase/util": false
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@slamsort/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.32.0",
+    "@slamsort/shared": "0.1.0",
+    "firebase-admin": "^14.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}
