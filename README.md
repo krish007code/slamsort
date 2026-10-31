@@ -7,6 +7,15 @@
 - [Play SlamSort](https://slamsort-web-162765212832.asia-south1.run.app)
 - [Source repository](https://github.com/krish007code/slamsort)
 
+## Evaluate in three minutes
+
+1. Open the public link and select **Take a practice shot** for a permission-free demo. Choose a destination and press **Fire**. Demo files are fictional and never touch disk.
+2. For the real chore, use desktop Chrome, Chromium, or Edge. Clone/download this repository and make a disposable copy of [`testing/sample-folder`](testing/sample-folder). Select that folder in SlamSort, approve bins once, and land a shot.
+3. Check the folder in your file manager: the source file is now inside the chosen category. Use **Undo last verified move** and check that it returns. This real filesystem action is the core challenge outcome.
+4. For Gemini, enter an organization goal and select **Generate with Gemini**. Optionally consent to filename/type metadata. The flowchart displays upcoming categories while you play; completed levels progress automatically.
+
+[Judging criteria and source evidence](docs/evaluation.md) · [Submission text and demo script](docs/submission.md) · [Architecture](docs/architecture.md) · [Security](SECURITY.md)
+
 ## Run locally
 
 Use Node.js 24.12+ and npm 11. From a fresh checkout, run `npm ci --ignore-scripts`. Then, from the repository root:
@@ -40,7 +49,7 @@ Before each initial round, a loading screen prepares four local file previews (o
 - Keyboard: choose a bin with **1–5**, then **Space**, or use the destination selector and **Fire** button for an assisted arc. Pointer cancellation cancels the aim. Enable original synthesized effects with **Sound on**.
 - **Reshoot** resets a missed or active shot without moving anything. After a successful basket, it uses the verified undo engine to restore the last file before retrying; demo mode restores its sample and score.
 - **Inspect** pauses the timer. Manual pause, file I/O, hidden document, setup, recovery and unavailable local storage/lock each independently pause it. The default is **120 seconds**, configurable in setup. Expiry stops new shots, settles a shot/operation already in progress, then shows a result. Resume remaining includes skipped files.
-- **Configure next round / timer** opens manual setup. Choose 1–5 distinct safe category names and freeze the plan. The current round's hoop targets remain fixed.
+- Initial setup selects 1–5 categories and the timer. Later populated branches continue automatically. **Finish session** stops progression; current hoop targets stay fixed during each round.
 
 ## Local files
 
@@ -60,7 +69,7 @@ No overwrite is intentional, no directory is recursively deleted, and misses nev
 
 **These browser operations are not atomic.** File System Access has no exclusive-create or compare-and-delete primitive: external applications can race between final checks and mutations. Keep the chosen folder idle in other applications. Read/write/verification/journal errors before removal preserve the source and may leave a partial destination. If the final journal write fails after removal, the verified destination remains and the operation requires recovery; no point is awarded.
 
-On reload, nonterminal journal records block further mutations. **Check both copies** reads actual content against recorded chunk hashes; nothing is automatically retried or deleted. Inspect both folders manually, retain uncertain copies, then acknowledge manual recovery and **Refresh loose files / review plan**. Handles are origin-bound and may need renewed permission through the folder picker. Do not clear browser storage while an operation is unresolved. Journal history is local and currently has no pruning UI.
+On reload, nonterminal journal records block further mutations. **Check both copies** reads actual content against recorded chunk hashes; nothing is automatically retried or deleted. Inspect both folders manually, retain uncertain copies, then acknowledge manual recovery and **Refresh loose files**. Handles are origin-bound and may need renewed permission through the folder picker. Do not clear browser storage while an operation is unresolved. Journal history is local and currently has no pruning UI.
 
 Approve destinations once at the beginning. A glowing flowchart shows editable bins at setup and the live hierarchy beside the court. Gemini prepares child destinations while you play. With the optional setup consent for file names/types, planning starts when two files reach a bin, uses metadata for up to 12 files, and refreshes with final membership before entering that level. Without consent it uses only the prompt/category labels. File bytes and folder paths are never sent by folder planning; sensitive and hidden filenames are excluded. Cached branches appear in the left sidebar. Completed rounds automatically continue breadth-first into their populated category folders, with the local preview buffer prepared before shooting. Singletons and groups that have not become smaller finish rather than nesting forever. Duplicates and unrelated directories are not traversed. Provider failures use clearly marked local fallback bins. Finish session stops progression; undo history persists across levels.
 
@@ -75,7 +84,9 @@ npm run lint
 npm test
 ```
 
-Tests cover downward score crossings, matching trajectory integration, reachable 1–5-hoop layouts, strength clamps, rim/floor/wall bounces, multi-chunk verification, collisions, journal failure stages, permissions, serialization, changed source/destination, recovery and real undo logic through a File System Access test adapter. The supervisor verified the previous court, first/second assisted hoops, single scoring, queue advancement and pause behavior. This update puts the file preview beside the court, adds a persistent filename strip and crumpled paper projectile. The supervisor is separately checking the updated browser UI; no browser surface is available to this code writer. Live web/API health and Vite proxy returned HTTP 200. Build emits the existing large Phaser chunk warning; PDF.js is separately lazy-loaded.
+The automated suite contains 59 tests covering physics, correction windows, file integrity, undo, recovery, hierarchy traversal, metadata consent, validation, authentication and rate limits. Run `npm run check` for type checking, lint, tests and build. GitHub Actions repeats these checks from a clean install and audits dependencies. Test counts and audit results describe the current revision, not an assurance about future dependencies.
+
+Live web/API and real Gemini requests have been smoke-tested. Native folder permissions and the full pointer/keyboard game still need a human browser check; no full WCAG conformance or end-to-end browser automation is claimed. The build reports a large lazy-loaded Phaser chunk; PDF support also loads separately.
 
 The root build generates shared declarations, `apps/api/dist` and `apps/web/dist`. `npm run preview -w @slamsort/web` serves the built web app; Vite's development proxy is not a production API routing configuration. The historical dependency review remains in [setup validation](docs/setup-validation.md).
 
@@ -83,7 +94,7 @@ The root build generates shared declarations, `apps/api/dist` and `apps/web/dist
 
 The app supports default-disabled AI, local loopback AI, and explicitly enabled public Firebase-authenticated AI. Authentication uses **slamsort-245f9**. The website, API, Vertex AI, and runtime billing use Cloud Run project **slamsort**. Firebase Hosting configuration is retained as an optional deployment target. Their project IDs are deliberately separate: Admin verifies the Firebase audience/issuer, while Gemini uses the Vertex project.
 
-For the supervisor's exact environment variables, public Firebase config shape, Docker build/run, Cloud Run source deployment, static Hosting/CSP preparation and GitHub handoff, see [deployment instructions](docs/deployment.md). The root Dockerfile and allowlisted upload/build contexts exclude private material. `firebase.json` serves only `apps/web/dist` with a static SPA fallback; it has no cross-project Run rewrite.
+For environment variables, public Firebase config shape, Docker build/run, Cloud Run source deployment, static Hosting/CSP preparation and GitHub handoff, see [deployment instructions](docs/deployment.md). The root Dockerfile and allowlisted upload/build contexts exclude private material. `firebase.json` serves only `apps/web/dist` with a static SPA fallback; it has no cross-project Run rewrite.
 
 Only `VITE_API_BASE_URL=https://<API_ORIGIN>` is needed at frontend build time. Firebase public web metadata is fetched from runtime `/api/config`; no server credentials are bundled. Public anonymous sign-in happens only after an explicit AI action and reuses the current in-memory user. API requests use Firebase Bearer tokens, strict exact-origin CORS, bounded schemas, per-user/per-instance rate/concurrency limits and sanitized errors. Manual play works on auth/network failure. `npm run prepare:hosting` pins the CSP to that same exact API origin before Hosting deploy.
 
