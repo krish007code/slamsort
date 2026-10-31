@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { pickFolder } from '../files/picker';
+import type { FolderPickerHost } from '../files/picker';
+import { FolderEntry } from './FolderEntry';
 import { useAi } from '../ai/useAi';
 import { AiSetup } from '../ai/AiSetup';
 import { HintPanel } from '../ai/HintPanel';
 import { Court } from '../game/Court';
 import { unlockSound } from '../game/sound';
 import { Preview } from '../files/Preview';
-import { supportsLocalFolders } from '../files/capabilities';
 import { FileEngine, inspectEntry, scan, validName } from '../files/engine';
 import type { Entry, Journal, LocalDirectory, LocalFile } from '../files/engine';
 import { acquireSession, openJournal } from '../storage/journal';
@@ -96,15 +98,25 @@ export function App() {
     ai.invalidate(true); setHintOpen(false);
     io.current = true; setBusy(true);
     try {
-      const picker = (window as unknown as { showDirectoryPicker: (o: { mode: string }) => Promise<LocalDirectory> }).showDirectoryPicker;
-      const selected = await picker({ mode: 'readwrite' });
+      // Invoke on Window directly, within the button gesture, like the tested console script.
+      const browser = window as unknown as FolderPickerHost;
+      if (!window.isSecureContext || typeof browser.showDirectoryPicker !== 'function') {
+        setNotice('This browser cannot move local files. Open this link in desktop Chrome, Chromium, or Edge, then select your folder. Practice mode works here.');
+        return;
+      }
+      const selected = await pickFolder(browser);
       if (await selected.requestPermission({ mode: 'readwrite' }) !== 'granted') throw new Error('Write permission was not granted.');
       const found = await scan(selected);
       setEntered(true); lastSuccess.current = undefined;
       setDir(selected); setPath([selected.name]); setMode('local'); setItems(found.files.map(handle => ({ name: handle.name, handle }))); setSkipped([]); setDirectories(found.directories);
       setSetup(true); setResult(false); setInspect(false); setManual(false); setScore(0); setDraft(DEFAULT_BINS); setRound(1);
       setNotice(`Opened ${selected.name}: ${found.files.length} loose files. ${found.directories.length} folders deferred. Choose bins, then freeze this round.`);
-    } catch (e) { setNotice(`Folder not opened: ${messageOf(e)} Demo remains available. Use desktop Chrome or Edge on localhost.`); }
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : '';
+      setNotice(name === 'AbortError' ? 'No folder selected. Choose a folder when you are ready.'
+        : name === 'SecurityError' ? 'The browser blocked this folder. Choose a normal test subfolder in desktop Chromium.'
+        : 'Folder permission was not granted or the folder could not be opened. Select another test folder.');
+    }
     finally { io.current = false; setBusy(false); }
   }
   function startRound() {
@@ -173,29 +185,14 @@ export function App() {
     if (left <= 0) setLeft(duration);
     setNotice('Previous sample returned to the launcher. Take the shot again.');
   }
-  if (!entered) return <main className="folder-entry">
-    <div className="entry-backdrop" aria-hidden="true"><span>SLAM</span><span>SORT</span></div>
-    <header><a className="brand" href="#start"><span>◉</span> SlamSort</a><span className="eyebrow">YOUR FILES. YOUR SHOT.</span></header>
-    <section className="entry-card" id="start">
-      <p className="eyebrow">01 / CHOOSE YOUR STARTING LINE</p>
-      <div className="folder-illustration" aria-hidden="true">▱<span>↗</span></div>
-      <h1>First, pick<br /><em>a messy folder.</em></h1>
-      <p>Turn your files into paper balls. Aim for their new home.<br />Every basket actually organizes your folder.</p>
-      <button className="primary entry-choose" disabled={busy || !supportsLocalFolders()} onClick={() => void chooseFolder()}>{busy ? 'Opening folder…' : 'Select a folder ↗'}</button>
-      <button className="entry-demo" disabled={busy} onClick={demo}>Just looking? Try the demo →</button>
-      <small>Files stay on your device. Folder access requires your permission.<br />Use a copied sample folder first. Desktop Chromium recommended.</small>
-      {!supportsLocalFolders() && <p role="status">This browser does not support local folders. You can still play the demo.</p>}
-      <p className="entry-notice" role="status">{notice.startsWith('Welcome') ? '' : notice}</p>
-    </section>
-    <footer>SHOOT FILES. CLEAR CLUTTER.<span>GOOGLE CLOUD × A LITTLE GOOD AIM</span></footer>
-  </main>;
+  if (!entered) return <FolderEntry busy={busy} notice={notice} onChoose={() => void chooseFolder()} onDemo={demo} />;
   return <main className="shell session-shell">
     <header className="masthead">
       <a className="brand" href="#court"><span>◉</span> SlamSort</a>
       <span className="session-tag">A LITTLE COURT. A CLEANER FOLDER.</span>
       <div className="header-actions">
         <button className={mode === 'demo' ? 'active' : ''} disabled={busy || flight} onClick={demo}>Demo</button>
-        <button className="primary" disabled={!supportsLocalFolders() || busy || flight} onClick={() => void chooseFolder()}>Open local folder</button>
+        <button className="primary" disabled={busy || flight} onClick={() => void chooseFolder()}>Open local folder</button>
         <button onClick={() => { if (!sound) unlockSound(); setSound(s => !s); }} aria-pressed={sound}>{sound ? '♪ On' : '♪ Off'}</button>
       </div>
     </header>
