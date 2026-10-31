@@ -34,7 +34,7 @@ No credentials are required for manual play. For real Gemini, use the user-confi
 ## Play
 
 - Select a folder first, review destination names, and approve the round. A left-hand assembly line carries each file-type document through a crumpler and into the teal launcher. Read the filename and local preview beside the court.
-- Drag **back and down** from the ball, then release. Power is clamped; dots follow the same launch velocity and gravity as the ball. Floor, walls and rims bounce. A downward crossing inside a hoop opening scores; a miss retries the same file.
+- Drag **back and down** from the ball, then release. Power is clamped; dots follow the same launch velocity and gravity as the ball. Floor, walls and rims bounce. A downward crossing inside a hoop opening starts a one-second correction window. Grab the visible paper ball to pause that window, then drop it into any hoop to change the destination. Dropping outside returns the file unchanged. Only the settled destination triggers a file move; a miss retries the same file.
 - Keyboard: choose a bin with **1–5**, then **Space**, or use the destination selector and **Fire** button for an assisted arc. Pointer cancellation cancels the aim. Enable original synthesized effects with **Sound on**.
 - **Reshoot** resets a missed or active shot without moving anything. After a successful basket, it uses the verified undo engine to restore the last file before retrying; demo mode restores its sample and score.
 - **Inspect** pauses the timer. Manual pause, file I/O, hidden document, setup, recovery and unavailable local storage/lock each independently pause it. The default is **120 seconds**, configurable in setup. Expiry stops new shots, settles a shot/operation already in progress, then shows a result. Resume remaining includes skipped files.
@@ -62,7 +62,7 @@ On reload, nonterminal journal records block further mutations. **Check both cop
 
 Completed first-level moves create actual category folders. **Refine [category]** enters that folder, lets you edit next-level bins, and freezes a new round. Repeat at any depth supported by the OS, or stop and keep the existing organization. Reopen the root folder to choose a different branch. Undo history persists across those rounds.
 
-Duplicate detection is deferred. The duplicates basket is disabled, no uncertain matches are labeled duplicates, and no copies are discarded. Real Gemini plans/hints are available through explicitly enabled local or public Firebase-authenticated APIs. Manual bins always work. Approved prompts and optional approved filename/excerpts go to Google Vertex AI; other file content stays local. See [local AI setup and endpoint contracts](docs/local-ai.md).
+A small left trash-can target moves files into a **Duplicates** folder and retains them. This is a user-selected destination, not automatic duplicate detection; no files are permanently discarded. Automatic duplicate detection is deferred. Real Gemini plans/hints are available through explicitly enabled local or public Firebase-authenticated APIs. Manual bins always work. Approved prompts and optional approved filename/excerpts go to Google Vertex AI; other file content stays local. See [local AI setup and endpoint contracts](docs/local-ai.md).
 
 ## Verification
 

@@ -76,7 +76,7 @@ export function App() {
     if (!inFlight.current) return;
     inFlight.current = false;
     if (basket === undefined) { setLastMiss(true); setFlight(false); setNotice('Off the rim! Same file, another try. Nothing moved.'); return; }
-    const category = bins[Number(basket)];
+    const category = basket === 'duplicates' ? 'Duplicates' : bins[Number(basket)];
     if (!category || !current) { setFlight(false); return; }
     io.current = true; setBusy(true);
     try {
@@ -245,10 +245,11 @@ export function App() {
           <div className="buttons">
             <select id="destination" value={destination} onChange={e => setDestination(Number(e.target.value))}>
               {bins.map((name, i) => <option value={i} key={i}>{i + 1} · {name}</option>)}
+              <option value={-1}>Duplicates — kept</option>
             </select>
             <button className="primary" disabled={!enabled} onClick={() => setFire(n => n + 1)}>Fire ↗</button>
           </div>
-          <small>Space fires an assisted arc. Drag back and down from the paper ball to aim manually.</small>
+          <small>Aim and release. After a basket, grab the ball within 1 second to correct its destination. Drop outside to retry. The left can keeps files in Duplicates.</small>
         </div>
         <div className="buttons">
           <button disabled={!current || busy || flight || setup || result} onClick={() => { ai.setHint(undefined); setHintOpen(true); }}>✦ Ask Gemini · review first</button>
@@ -305,7 +306,7 @@ export function App() {
         {bins.map(name => <button key={name} disabled={busy || flight || setup || pending.length > 0}
           onClick={() => void refine(name)}>Refine {name} {ai.children[name] ? '✦ draft ready' : '→'}</button>)}
       </div>
-      <p>Refinement opens an editable next-level plan. Stop at any depth. Directories are deferred, never recursively deleted. Duplicate detection is deferred; no files are discarded.</p>
+      <p>Refinement opens an editable next-level plan. Stop at any depth. Directories are deferred, never recursively deleted. The left trash can moves files into Duplicates; it never deletes them. You decide which files are duplicates; automatic detection is deferred.</p>
       <details><summary>Journal · {entries.length} operations</summary>
         {entries.slice().sort((a, b) => b.at - a.at).map(e => <p key={e.id}>{e.status} · {e.sourceName} → {e.category ? `${e.category}/` : ''}{e.targetName}{e.undoOf ? ' (undo)' : ''}{e.error ? ` · ${e.error}` : ''}</p>)}
       </details>

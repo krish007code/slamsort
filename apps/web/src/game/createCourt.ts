@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
+import { CatchWindow } from './catchWindow';
 import { shotSound } from './sound';
 import { drawWarehouse, timber } from './scenery';
-import { ORIGIN, WIDTH, HEIGHT, FLOOR, MAX_SPEED, pullVelocity, position, step, keyboardVelocity, hoopsFor } from './physics';
+import { DUPLICATES_HOOP, dropTarget, ORIGIN, WIDTH, HEIGHT, FLOOR, MAX_SPEED, pullVelocity, position, step, keyboardVelocity, hoopsFor } from './physics';
 import type { Ball, Point, Hoop } from './physics';
 export interface CourtState {
   labels: string[]; fileKey: string; filename: string; enabled: boolean; paused: boolean; sound: boolean;
@@ -13,6 +14,7 @@ export function createCourt(parent: HTMLElement, read: () => CourtState): () => 
     private labels: Phaser.GameObjects.Text[] = [];
     private hoops: Hoop[] = [];
     private ball: Ball | undefined;
+    private catchWindow = new CatchWindow();
     private aim: Point | undefined;
     private dragging = false;
     private age = 0;
@@ -51,47 +53,77 @@ export function createCourt(parent: HTMLElement, read: () => CourtState): () => 
       this.fileLabel = this.add.text(ORIGIN.x, ORIGIN.y - 72, '', { fontFamily: 'monospace', fontSize: '11px', color: '#efe4ce', backgroundColor: '#211d30', padding: { x: 8, y: 5 } }).setOrigin(.5);
       this.fileType = this.add.text(80, 568, '', {fontFamily:'monospace',fontSize:'11px',fontStyle:'bold',color:'#325b68'}).setOrigin(.5);
       this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        if (this.catchWindow.active && this.ball && !read().paused && Math.hypot(p.x-this.ball.x,p.y-this.ball.y)<48) { this.catchWindow.grab(); return; }
         if (read().enabled && !read().paused && !this.ball && this.time.now > this.readyAt && Math.hypot(p.x - ORIGIN.x, p.y - ORIGIN.y) < 65) { this.dragging = true; this.aim = { x: p.x, y: p.y }; }
       });
-      this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (this.dragging) this.aim = { x: p.x, y: p.y }; });
-      this.input.on('pointerup', () => {
-        if (this.dragging && this.aim) this.launch(pullVelocity(this.aim));
-        this.dragging = false; this.aim = undefined;
-      });
+      this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.movePointer({x:p.x,y:p.y}));
+      this.input.on('pointerup', this.externalRelease);
     }
     cancel = () => { this.dragging = false; this.aim = undefined; };
+    private movePointer(point: Point) {
+      if (read().paused) return;
+      if (this.catchWindow.dragging && this.ball) this.ball = {...point,vx:0,vy:0};
+      else if (this.dragging) this.aim = point;
+    }
     externalMove = (e: PointerEvent) => {
-      if (!this.dragging) return;
+      if (!this.dragging && !this.catchWindow.dragging) return;
       const rect = game.canvas.getBoundingClientRect();
-      this.aim = { x: (e.clientX - rect.left) * WIDTH / rect.width, y: (e.clientY - rect.top) * HEIGHT / rect.height };
+      this.movePointer({ x: (e.clientX - rect.left) * WIDTH / rect.width, y: (e.clientY - rect.top) * HEIGHT / rect.height });
     };
-    externalRelease = () => { if (this.dragging && this.aim) this.launch(pullVelocity(this.aim)); this.cancel(); };
+    externalRelease = () => {
+      if (this.catchWindow.dragging && this.ball) {
+        const target = dropTarget(this.ball, this.hoops);
+        this.catchWindow.drop(target?.id);
+        if (!target) { this.ball = undefined; this.readyAt = this.time.now + 300; read().onSettle(undefined); }
+        else this.ball = {x:target.x,y:target.y+18,vx:0,vy:0};
+      } else if (this.dragging && this.aim) this.launch(pullVelocity(this.aim));
+      this.cancel();
+    };
+    cancelInteraction = () => {
+      this.cancel();
+      if (this.catchWindow.dragging) { this.catchWindow.clear(); this.ball=undefined; read().onSettle(undefined); }
+    };
     private launch(v: Point) {
       if (read().fileKey !== this.key || !read().enabled || read().paused || this.ball || this.time.now < this.readyAt || Math.hypot(v.x, v.y) < 40) return;
       this.ball = { ...ORIGIN, vx: v.x, vy: v.y }; this.age = 0; this.cancel(); read().onShot();
     }
     update(_time: number, delta: number) {
       const state = read();
-      if (state.fileKey !== this.key) { this.key = state.fileKey; this.loadedAt = this.time.now; this.readyAt = this.time.now + 1700; this.ball = undefined; this.cancel(); }
+      if (state.fileKey !== this.key) { this.key = state.fileKey; this.loadedAt = this.time.now; this.readyAt = this.time.now + 1700; this.ball = undefined; this.catchWindow.clear(); this.cancel(); }
       if (state.reset !== this.reset) {
-        this.reset = state.reset; this.ball = undefined; this.cancel();
+        this.reset = state.reset; this.ball = undefined; this.catchWindow.clear(); this.cancel();
         this.loadedAt = this.time.now; this.readyAt = this.time.now + 650;
       }
       if (this.plan !== JSON.stringify(state.labels)) {
         this.plan = JSON.stringify(state.labels); this.labels.forEach(t => t.destroy()); this.labels = [];
-        this.hoops = hoopsFor(state.labels);
-        for (const h of this.hoops) this.labels.push(this.add.text(h.x, h.y - 93, `${Number(h.id) + 1}  ${h.label.length > 18 ? h.label.slice(0, 16) + '…' : h.label}`, { fontFamily: 'sans-serif', fontSize: '17px', color: '#f6dfaf', backgroundColor: '#211d30', padding: { x: 12, y: 9 } }).setOrigin(.5));
+        this.hoops = [...hoopsFor(state.labels), DUPLICATES_HOOP];
+        for (const h of this.hoops) this.labels.push(this.add.text(h.x, h.y - 93, `${h.id === 'duplicates' ? '' : Number(h.id) + 1 + '  '}${h.label.length > 18 ? h.label.slice(0, 16) + '…' : h.label}`, { fontFamily: 'sans-serif', fontSize: '17px', color: '#f6dfaf', backgroundColor: '#211d30', padding: { x: 12, y: 9 } }).setOrigin(.5));
       }
       if (state.paused || !state.enabled) this.cancel();
-      if (state.fire !== this.fire) { this.fire = state.fire; const h = this.hoops[state.destination]; if (h) this.launch(keyboardVelocity(h)); }
-      if (this.ball && !state.paused) {
+      if (state.fire !== this.fire) { this.fire = state.fire; const h = state.destination === -1 ? DUPLICATES_HOOP : this.hoops[state.destination]; if (h) this.launch(keyboardVelocity(h)); }
+      if (this.catchWindow.active && !state.paused) {
+        const target = this.catchWindow.tick(Math.min(delta, 100));
+        if (target !== undefined) {
+          this.ball = undefined; this.readyAt = this.time.now + 400;
+          if (state.sound) shotSound(true);
+          state.onSettle(target);
+        }
+      }
+      if (this.ball && !this.catchWindow.active && !state.paused) {
         // Fixed small steps keep rim collisions and downward crossings stable across frame rates.
         let remaining = Math.min(delta / 1000, .05);
         while (remaining > 0 && this.ball) {
           const dt = Math.min(1 / 240, remaining); remaining -= dt; this.age += dt;
           const result = step(this.ball, dt, this.hoops); this.ball = result.ball;
-          if (result.basket !== undefined || this.age > 3.8 || this.ball.y > 800) {
-            const basket = result.basket; this.ball = undefined; this.readyAt = this.time.now + 400; if (state.sound) shotSound(basket !== undefined); state.onSettle(basket);
+          if (result.basket !== undefined) {
+            const hoop = this.hoops.find(h => h.id === result.basket)!;
+            this.catchWindow.begin(result.basket);
+            this.ball = {x:hoop.x,y:hoop.y+18,vx:0,vy:0};
+            break;
+          }
+          if (this.age > 3.8 || this.ball.y > HEIGHT+100) {
+            this.ball=undefined; this.readyAt=this.time.now+400;
+            if (state.sound) shotSound(false); state.onSettle(undefined);
           }
         }
       }
@@ -100,6 +132,14 @@ export function createCourt(parent: HTMLElement, read: () => CourtState): () => 
       const g = this.dynamic; g.clear();
       // Timber backboards and angled guide rails echo the reference's basketball contraptions.
       for (const h of this.hoops) {
+        if (h.id === 'duplicates') {
+          // The can is a retained-files destination, never a permanent-delete action.
+          g.fillStyle(0x283943).fillRoundedRect(h.x-29,h.y+3,58,61,5);
+          g.lineStyle(3,0x8eaaa0).strokeRoundedRect(h.x-29,h.y+3,58,61,5);
+          g.lineStyle(5,0xb3b5a1).lineBetween(h.x-34,h.y,h.x+34,h.y);
+          for (const offset of [-15,0,15]) g.lineStyle(2,0x6e8780).lineBetween(h.x+offset,h.y+14,h.x+offset,h.y+51);
+          continue;
+        }
         timber(g, h.x + 53, h.y - 61, 136, Math.PI / 2, 15);
         timber(g, h.x - 66, h.y + 82, 132, 0, 13);
         timber(g, h.x + 53, h.y - 61, 72, -2.55, 14);
@@ -114,6 +154,12 @@ export function createCourt(parent: HTMLElement, read: () => CourtState): () => 
         }
         g.lineStyle(7, 0x36aa95).lineBetween(h.x - 43, h.y, h.x + 43, h.y);
         g.fillStyle(0xfce0a2).fillCircle(h.x - 43, h.y, 4).fillCircle(h.x + 43, h.y, 4);
+      }
+      if (this.catchWindow.active && this.ball) {
+        const target = this.catchWindow.dragging ? dropTarget(this.ball,this.hoops) : this.hoops.find(h=>h.id===this.catchWindow.target);
+        if (target) g.lineStyle(3,0xf3d68e,.85).strokeRoundedRect(target.x-55,target.y-15,110,85,8);
+        g.lineStyle(3,0xf6d386).strokeCircle(this.ball.x,this.ball.y,23);
+        g.fillStyle(0xf6d386,.7).fillRect(this.ball.x-23,this.ball.y-34,46*Math.max(0,this.catchWindow.remaining/1000),4);
       }
       const v = this.aim ? pullVelocity(this.aim) : undefined;
       if (v) {
@@ -153,12 +199,12 @@ export function createCourt(parent: HTMLElement, read: () => CourtState): () => 
         g.lineStyle(1,0xaaa18f).lineBetween(p.x-2,p.y+3,p.x+7,p.y-5).lineBetween(p.x-2,p.y+3,p.x+5,p.y+8).lineBetween(p.x-8,p.y+5,p.x-2,p.y+3);
       }
       this.fileLabel.setText(state.filename.length > 29 ? `${state.filename.slice(0, 26)}…` : state.filename).setVisible(!this.ball && !!state.filename);
-      this.message.setText(state.paused ? 'PAUSED · your files can wait' : this.ball ? 'IN FLIGHT' : v ? `POWER ${Math.round(Math.hypot(v.x, v.y) / MAX_SPEED * 100)}% · release to shoot` : 'DRAG BACK FROM THE PAPER BALL ↙  RELEASE TO SHOOT ↗');
+      this.message.setText(state.paused ? 'PAUSED · your files can wait' : this.catchWindow.active ? (this.catchWindow.dragging ? 'DROP INTO A HOOP · OUTSIDE = RETRY' : '1 SECOND TO CORRECT · GRAB THE PAPER BALL') : this.ball ? 'IN FLIGHT' : v ? `POWER ${Math.round(Math.hypot(v.x, v.y) / MAX_SPEED * 100)}% · release to shoot` : 'DRAG BACK FROM THE PAPER BALL ↙  RELEASE TO SHOOT ↗');
     }
   }
   const scene = new CourtScene();
   const game = new Phaser.Game({ type: Phaser.AUTO, parent, width: WIDTH, height: HEIGHT, backgroundColor: '#2d2540', scene, scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, input: { windowEvents: true }, audio: { noAudio: true }, banner: false });
-  const cancel = () => scene.cancel();
+  const cancel = () => scene.cancelInteraction();
   window.addEventListener('pointercancel', cancel, true); window.addEventListener('blur', cancel);
   window.addEventListener('pointermove', scene.externalMove); window.addEventListener('pointerup', scene.externalRelease);
   return () => { window.removeEventListener('pointercancel', cancel, true); window.removeEventListener('blur', cancel); window.removeEventListener('pointermove', scene.externalMove); window.removeEventListener('pointerup', scene.externalRelease); game.destroy(true); };

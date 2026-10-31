@@ -8,6 +8,10 @@ export const MAX_SPEED = 1080;
 export interface Point { x: number; y: number }
 export interface Hoop extends Point { id: string; label: string }
 export interface Ball extends Point { vx: number; vy: number }
+export const DUPLICATES_HOOP: Hoop = { id: 'duplicates', label: 'Duplicates — kept', x: 87, y: 488 };
+export function dropTarget(point: Point, hoops: Hoop[]): Hoop | undefined {
+  return hoops.find(h => Math.abs(point.x - h.x) < (h.id === 'duplicates' ? 40 : 55) && point.y >= h.y - 48 && point.y <= h.y + 65);
+}
 export function hoopsFor(labels: string[]): Hoop[] {
   return labels.map((label, i) => ({ id: String(i), label, x: 620 + i * (490 / Math.max(1, labels.length - 1)), y: 470 - i * (240 / Math.max(1, labels.length - 1)) }));
 }
@@ -26,7 +30,7 @@ export function keyboardVelocity(h: Hoop): Point {
 export function crossing(a: Point, b: Point, h: Hoop): boolean {
   if (b.y <= a.y || a.y > h.y || b.y < h.y) return false;
   const x = a.x + (b.x - a.x) * (h.y - a.y) / (b.y - a.y);
-  return Math.abs(x - h.x) < 43 - RADIUS;
+  return Math.abs(x - h.x) < (h.id === 'duplicates' ? 34 : 43) - RADIUS;
 }
 export function step(ball: Ball, dt: number, hoops: Hoop[]): { ball: Ball; basket?: string; bounce: boolean } {
   const next = { x: ball.x + ball.vx * dt, y: ball.y + ball.vy * dt + GRAVITY * dt * dt / 2, vx: ball.vx, vy: ball.vy + GRAVITY * dt };
@@ -35,7 +39,7 @@ export function step(ball: Ball, dt: number, hoops: Hoop[]): { ball: Ball; baske
   let bounce = false;
   if (next.x < RADIUS || next.x > WIDTH - RADIUS) { next.x = Math.max(RADIUS, Math.min(WIDTH - RADIUS, next.x)); next.vx *= -0.67; bounce = true; }
   if (next.y > FLOOR - RADIUS) { next.y = FLOOR - RADIUS; next.vy = -Math.abs(next.vy) * 0.55; next.vx *= 0.78; bounce = true; }
-  for (const h of hoops) for (const x of [h.x - 43, h.x + 43]) {
+  for (const h of hoops) for (const x of [h.x - (h.id === 'duplicates' ? 34 : 43), h.x + (h.id === 'duplicates' ? 34 : 43)]) {
     const dx = next.x - x, dy = next.y - h.y, d = Math.hypot(dx, dy);
     if (d < RADIUS + 4 && d > 0) {
       const nx = dx / d, ny = dy / d, dot = next.vx * nx + next.vy * ny;
