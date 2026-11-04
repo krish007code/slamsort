@@ -1,17 +1,17 @@
 # SlamSort public deployment
 
-The API and static website use separate Cloud Run services in `slamsort`. Firebase Authentication uses `slamsort-245f9`. No private environment/credential file was read. Source: https://github.com/krish007code/slamsort.
+The API and static website use separate Cloud Run services in `curious-setup-512603-r3`. Firebase Hosting and Authentication use the same project. Restored on 4 November 2026 after the former projects became inaccessible. No private environment/credential file was read. Source: https://github.com/krish007code/slamsort.
 
 ## Project ownership
 
 | Purpose | Project |
 | --- | --- |
-| Website/API, Vertex inference, runtime billing, Cloud Run, Cloud Build, Artifact Registry | `slamsort` |
-| Firebase Authentication, web app, ID token audience/issuer; optional Hosting | `slamsort-245f9` |
+| Website/API, Vertex inference, runtime billing, Cloud Run, Cloud Build, Artifact Registry | `curious-setup-512603-r3` |
+| Firebase Hosting, Authentication, web app, ID token audience/issuer | `curious-setup-512603-r3` |
 
-The Admin SDK is explicitly initialized with `FIREBASE_AUTH_PROJECT_ID` set to the Firebase project. It validates token signature, expiry, audience and issuer. It does not derive the auth project from ADC, Cloud Run or `GOOGLE_CLOUD_PROJECT`. Gemini remains configured with `GOOGLE_CLOUD_PROJECT=slamsort`. Verification uses public signing certificates; no cross-project Firebase user-management IAM or service-account JSON is needed. Revocation/user-disabled checks requiring Auth RPCs are not enabled; expiry/signature verification is enabled.
+The Admin SDK is explicitly initialized with `FIREBASE_AUTH_PROJECT_ID` set to the Firebase project. It validates token signature, expiry, audience and issuer. It does not derive the auth project from ADC, Cloud Run or `GOOGLE_CLOUD_PROJECT`. Gemini remains configured with `GOOGLE_CLOUD_PROJECT=curious-setup-512603-r3`. Verification uses public signing certificates; no cross-project Firebase user-management IAM or service-account JSON is needed. Revocation/user-disabled checks requiring Auth RPCs are not enabled; expiry/signature verification is enabled.
 
-Hosting is **static** in the Firebase Spark project. There is no cross-project Cloud Run Hosting rewrite. The frontend calls the backend HTTPS origin directly using exact-origin CORS. Billing stays with the Cloud Run/Vertex project; Hosting does not need upgrading for this architecture.
+Hosting is **static** in the same billing-enabled Firebase project. The browser calls Cloud Run directly; there is no Hosting rewrite to the API. The frontend calls the backend HTTPS origin directly using exact-origin CORS. The project uses its existing linked billing account.
 
 ## Public process configuration
 
@@ -19,12 +19,12 @@ Hosting is **static** in the Firebase Spark project. There is no cross-project C
 | --- | --- |
 | `SLAMSORT_PUBLIC_AI` | Exactly `true` to enable public Firebase-protected inference. Default disabled. |
 | `SLAMSORT_LOCAL_AI` | Set `false` or omit in public mode; both true refuse startup. |
-| `GOOGLE_CLOUD_PROJECT` | `slamsort` — Vertex/billing project. |
+| `GOOGLE_CLOUD_PROJECT` | `curious-setup-512603-r3` — Vertex/billing project. |
 | `GOOGLE_CLOUD_LOCATION` | `global` — verified Vertex location. |
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` — verified public model identifier. |
-| `FIREBASE_AUTH_PROJECT_ID` | `slamsort-245f9` — token audience/issuer project. |
+| `FIREBASE_AUTH_PROJECT_ID` | `curious-setup-512603-r3` — token audience/issuer project. |
 | `FIREBASE_WEB_CONFIG` | JSON string with public browser config shown below. No server credentials. |
-| `ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins: `https://slamsort-245f9.web.app,https://slamsort-245f9.firebaseapp.com`. No wildcard, trailing slash or URL path. |
+| `ALLOWED_ORIGINS` | Comma-separated exact HTTPS origins: `https://curious-setup-512603-r3.web.app,https://curious-setup-512603-r3.firebaseapp.com,https://slamsort-web-572891145234.asia-south1.run.app`. No wildcard, trailing slash or URL path. |
 | `PORT` | `8080` locally; Cloud Run supplies it. |
 | `VITE_API_BASE_URL` | Frontend build only: exact HTTPS Cloud Run origin, without trailing slash or `/api`. This is the only frontend build-time setting. |
 
@@ -33,8 +33,8 @@ Hosting is **static** in the Firebase Spark project. There is no cross-project C
 ```json
 {
   "apiKey": "<PUBLIC_FIREBASE_WEB_API_KEY>",
-  "authDomain": "slamsort-245f9.firebaseapp.com",
-  "projectId": "slamsort-245f9",
+  "authDomain": "curious-setup-512603-r3.firebaseapp.com",
+  "projectId": "curious-setup-512603-r3",
   "appId": "<PUBLIC_FIREBASE_WEB_APP_ID>"
 }
 ```
@@ -45,19 +45,19 @@ A Firebase web API key and web app IDs are public client metadata. Google refres
 
 ## Human launch/build/deploy sequence
 
-1. Finish registering the Firebase web app in **slamsort-245f9**, enable **Anonymous** sign-in, and check both Hosting domains under Auth authorized domains. Use only the public client configuration above.
-2. Review the Cloud Run runtime identity in **slamsort** for the required Vertex inference permission and approved billing/quota/budget settings. The supervisor owns IAM decisions; this writer performs none. No downloaded service-account key is needed.
+1. Finish registering the Firebase web app in **curious-setup-512603-r3**, enable **Anonymous** sign-in, and check both Hosting domains under Auth authorized domains. Use only the public client configuration above.
+2. Review the Cloud Run runtime identity in **curious-setup-512603-r3** for the required Vertex inference permission and approved billing/quota/budget settings. The supervisor owns IAM decisions; this writer performs none. No downloaded service-account key is needed.
 3. Set public variables explicitly in the shell. Do not source any environment file:
 
 ```sh
 export SLAMSORT_PUBLIC_AI=true
 export SLAMSORT_LOCAL_AI=false
-export GOOGLE_CLOUD_PROJECT=slamsort
+export GOOGLE_CLOUD_PROJECT=curious-setup-512603-r3
 export GOOGLE_CLOUD_LOCATION=global
 export GEMINI_MODEL=gemini-3.5-flash-lite
 export FIREBASE_AUTH_PROJECT_ID="<YOUR_FIREBASE_PROJECT_ID>"
 export FIREBASE_WEB_CONFIG='<PUBLIC_WEB_APP_JSON_FROM_ABOVE>'
-export ALLOWED_ORIGINS='https://slamsort-245f9.web.app,https://slamsort-245f9.firebaseapp.com'
+export ALLOWED_ORIGINS='https://curious-setup-512603-r3.web.app,https://curious-setup-512603-r3.firebaseapp.com,https://slamsort-web-572891145234.asia-south1.run.app'
 ```
 
 Local compiled API launch for supervisor verification:
@@ -87,13 +87,13 @@ Supervisor-only Cloud Run source deploy command (choose approved region and exis
 
 ```sh
 gcloud run deploy slamsort-api \
-  --project slamsort \
+  --project curious-setup-512603-r3 \
   --region '<APPROVED_CLOUD_RUN_REGION>' \
   --source . \
   --service-account '<APPROVED_RUNTIME_SERVICE_ACCOUNT_EMAIL>' \
   --allow-unauthenticated \
   --max-instances 1 --concurrency 16 --timeout 60 \
-  --set-env-vars "^@^SLAMSORT_PUBLIC_AI=true@SLAMSORT_LOCAL_AI=false@GOOGLE_CLOUD_PROJECT=slamsort@GOOGLE_CLOUD_LOCATION=global@GEMINI_MODEL=gemini-3.5-flash-lite@FIREBASE_AUTH_PROJECT_ID=slamsort-245f9@FIREBASE_WEB_CONFIG=${FIREBASE_WEB_CONFIG}@ALLOWED_ORIGINS=${ALLOWED_ORIGINS}"
+  --set-env-vars "^@^SLAMSORT_PUBLIC_AI=true@SLAMSORT_LOCAL_AI=false@GOOGLE_CLOUD_PROJECT=curious-setup-512603-r3@GOOGLE_CLOUD_LOCATION=global@GEMINI_MODEL=gemini-3.5-flash-lite@FIREBASE_AUTH_PROJECT_ID=curious-setup-512603-r3@FIREBASE_WEB_CONFIG=${FIREBASE_WEB_CONFIG}@ALLOWED_ORIGINS=${ALLOWED_ORIGINS}"
 ```
 
 Cloud Run transport must be reachable by the browser, so health/config/preflights are public; **paid application routes still require verified Firebase Bearer tokens**. The custom `@` delimiter keeps commas inside public JSON/origin values intact. Do not include `@` in those values. These are public config values, not credentials. Review the command instead of blindly copying placeholders. Existing build/deploy IAM is managed by the supervisor; no IAM change is implied here.
@@ -104,7 +104,7 @@ After the API URL is known, build static Hosting and prepare an **exact API orig
 export VITE_API_BASE_URL='https://<ACTUAL_CLOUD_RUN_HOST>'
 npm run build
 npm run prepare:hosting
-firebase deploy --only hosting --project slamsort-245f9
+firebase deploy --only hosting --project curious-setup-512603-r3
 ```
 
 `prepare:hosting` only updates the CSP in `firebase.json`; it does not deploy or read credentials. Review that diff before publication. The initial CSP deliberately has no external API origin until this command supplies it. Firebase SDKs are bundled and lazy-loaded; CSP allows the exact API host, Firebase Auth Google APIs, local/blob images, local/blob PDF workers and WebAssembly evaluation for PDF rendering. The static SPA fallback has no Cloud Run rewrite. `apps/web/dist` is the only Hosting public directory.
@@ -139,10 +139,10 @@ No GitHub Actions or private deployment keys are introduced. The supervisor owns
 
 ## Active Cloud Run website
 
-Firebase Hosting was unavailable to the deployment account, so the public website is served by a second Cloud Run service.
+The website is deployed to Firebase Hosting at https://curious-setup-512603-r3.web.app and also served by a second Cloud Run service. Both website origins are allowed by the API.
 
-- Website: https://slamsort-web-162765212832.asia-south1.run.app
-- API: https://slamsort-api-162765212832.asia-south1.run.app
+- Website: https://slamsort-web-572891145234.asia-south1.run.app
+- API: https://slamsort-api-572891145234.asia-south1.run.app
 - Region: `asia-south1`
 - Both services scale to zero with a one-instance maximum.
 - `slamsort-web` runtime has no Vertex role. The `slamsort-api` runtime has Vertex AI User.
@@ -152,10 +152,10 @@ Prepare an explicit, credential-free website build context outside the repositor
 
 ```sh
 node scripts/prepare-web-context.mjs /tmp/slamsort-web-build
-gcloud run deploy slamsort-web --project=slamsort --region=asia-south1 \
+gcloud run deploy slamsort-web --project=curious-setup-512603-r3 --region=asia-south1 \
   --source=/tmp/slamsort-web-build \
-  --service-account=slamsort-web@slamsort.iam.gserviceaccount.com \
-  --build-service-account=projects/slamsort/serviceAccounts/slamsort-build@slamsort.iam.gserviceaccount.com \
+  --service-account=slamsort-web@curious-setup-512603-r3.iam.gserviceaccount.com \
+  --build-service-account=projects/curious-setup-512603-r3/serviceAccounts/slamsort-build@curious-setup-512603-r3.iam.gserviceaccount.com \
   --max-instances=1 --min-instances=0 --memory=256Mi --port=8080 \
   --no-invoker-iam-check
 ```

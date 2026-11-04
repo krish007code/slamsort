@@ -8,8 +8,9 @@ import { resolve, extname, sep } from 'node:path';
 
 const root = fileURLToPath(new URL('./dist/', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' };
-const apiOrigin = 'https://slamsort-api-162765212832.asia-south1.run.app';
-const csp = `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' ${apiOrigin} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src https://slamsort-245f9.firebaseapp.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`;
+const apiOrigin = process.env.SLAMSORT_API_ORIGIN ?? 'https://slamsort-api-572891145234.asia-south1.run.app';
+const firebaseAuthDomain = process.env.FIREBASE_AUTH_DOMAIN ?? 'curious-setup-512603-r3.firebaseapp.com';
+const csp = `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' ${apiOrigin} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src https://${firebaseAuthDomain}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`;
 
 // Serve only built public assets; source, environment files and credentials are absent.
 createServer(async (request, response) => {

@@ -4,7 +4,8 @@
 
 ## Links
 
-- [Play SlamSort](https://slamsort-web-162765212832.asia-south1.run.app)
+- [Play SlamSort](https://curious-setup-512603-r3.web.app)
+- [Cloud Run website](https://slamsort-web-572891145234.asia-south1.run.app)
 - [Source repository](https://github.com/krish007code/slamsort)
 
 ## Evaluate in three minutes
@@ -92,7 +93,7 @@ The root build generates shared declarations, `apps/api/dist` and `apps/web/dist
 
 ## Public deployment and authentication
 
-The app supports default-disabled AI, local loopback AI, and explicitly enabled public Firebase-authenticated AI. Authentication uses **slamsort-245f9**. The website, API, Vertex AI, and runtime billing use Cloud Run project **slamsort**. Firebase Hosting configuration is retained as an optional deployment target. Their project IDs are deliberately separate: Admin verifies the Firebase audience/issuer, while Gemini uses the Vertex project.
+The app supports default-disabled AI, local loopback AI, and explicitly enabled public Firebase-authenticated AI. Firebase Hosting, Firebase Authentication, the Cloud Run website and API, Vertex AI, and runtime billing use project **curious-setup-512603-r3**. Admin explicitly verifies the Firebase audience/issuer, while Gemini uses the configured Vertex project. The public deployment was restored on 4 November 2026; use the current links above.
 
 For environment variables, public Firebase config shape, Docker build/run, Cloud Run source deployment, static Hosting/CSP preparation and GitHub handoff, see [deployment instructions](docs/deployment.md). The root Dockerfile and allowlisted upload/build contexts exclude private material. `firebase.json` serves only `apps/web/dist` with a static SPA fallback; it has no cross-project Run rewrite.
 
